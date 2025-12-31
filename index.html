@@ -691,6 +691,7 @@
             changeLanguage('zh-TW'); // Then set language (triggers updates)
             document.getElementById('fabricSelect').value = "0"; 
             recalc(); // Final recalc
+            updateMarketMap(); // [新增] 確保網頁載入時就填入氣泡圖數據
         };
 
         function changeLanguage(lang) {
