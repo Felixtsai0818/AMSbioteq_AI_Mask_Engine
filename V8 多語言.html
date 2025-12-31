@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Mask Engine (YIYU Enterprise)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        yiyu: {
+                            base: '#2D4A3E',    // 品牌基調色 (深苔綠)
+                            primary: '#5F8D75', // 主色 (操作元件)
+                            secondary: '#A3B18A', // 次要色 (裝飾)
+                            accent: '#D0E1D4',   // 點綴色 (背景/高亮)
+                            bg: '#F9F8F6',       // 全局背景 (米白)
+                            text: '#2C3333',     // 主要文字
+                            danger: '#EF4444'    // 警示色
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Helvetica Neue', 'Arial', 'sans-serif'],
+                        serif: ['Georgia', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: theme('colors.yiyu.bg'); color: theme('colors.yiyu.text'); }
+        .sidebar { background: linear-gradient(180deg, #2D4A3E 0%, #1B352C 100%); color: white; }
+        .logo-section { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .subtitle { font-family: 'Georgia', serif; font-style: italic; font-size: 0.7rem; color: #A3B18A; letter-spacing: 0.8px; margin-top: 6px; opacity: 0.9; }
+        .nav-item { padding: 16px 20px; cursor: pointer; transition: all 0.3s ease; border-left: 4px solid transparent; color: #A3B18A; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(95, 141, 117, 0.15); border-left-color: #5F8D75; color: #fff; font-weight: 500; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(45, 74, 62, 0.04); padding: 24px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid rgba(163, 177, 138, 0.15); }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(45, 74, 62, 0.08); border-color: rgba(95, 141, 117, 0.3); }
+        .tag-select { cursor: pointer; border: 1px solid #A3B18A; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; color: #5F8D75; transition: 0.2s; background: white; }
+        .tag-select:hover { background: #F0F5F2; border-color: #5F8D75; }
+        .tag-select.selected { background: #5F8D75; color: white; border-color: #5F8D75; box-shadow: 0 2px 5px rgba(95, 141, 117, 0.3); }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .animate-fade-in { animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #A3B18A; border-radius: 3px; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm md:text-base">
+
+    <!-- Sidebar -->
+    <div class="sidebar w-20 md:w-64 flex-shrink-0 flex flex-col shadow-2xl z-20">
+        <div class="logo-section flex flex-col">
+            <!-- [修改] 這裡將文字改為圖片標籤 -->
+            <!-- 實際使用時，請將 src 替換為您的 Logo 檔案路徑，例如: src="images/company-logo.png" -->
+            <img src="logo.png">
+            <div class="subtitle">the art of micro-ecology balance</div>
+        </div>
+        <nav class="mt-6 flex-1 px-2 space-y-2">
+            <div class="nav-item active rounded" onclick="switchTab('lab', this)">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-flask text-lg w-6 text-center"></i>
+                    <span class="hidden md:block" data-i18n="nav_lab">配方開發實驗室</span>
+                </div>
+            </div>
+            <div class="nav-item rounded" onclick="switchTab('market', this)">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-chart-line text-lg w-6 text-center"></i>
+                    <span class="hidden md:block" data-i18n="nav_market">市場趨勢洞察</span>
+                </div>
+            </div>
+            <div class="nav-item rounded" onclick="switchTab('products', this)">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-database text-lg w-6 text-center"></i>
+                    <span class="hidden md:block" data-i18n="nav_assets">企業配方資產</span>
+                </div>
+            </div>
+        </nav>
+        <div class="p-6 text-xs text-gray-400 opacity-60 hidden md:block border-t border-white/10">
+            System V7.2 (Multi-Lang)<br>Module: Lab & Market
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto bg-yiyu-bg p-4 md:p-8 relative">
+        
+        <!-- Top Bar -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 sticky top-0 bg-yiyu-bg/95 backdrop-blur z-10 py-3 border-b border-gray-200/50">
+            <div>
+                <h1 id="pageTitle" class="text-2xl font-bold text-yiyu-base tracking-tight" data-i18n="title_lab">配方開發實驗室</h1>
+                <p id="pageDesc" class="text-gray-500 text-xs md:text-sm mt-1" data-i18n="desc_lab">微生態平衡導向的 AI 面膜企劃引擎</p>
+            </div>
+            <div class="flex gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                <!-- Language Switcher -->
+                <div class="flex items-center gap-2 px-3 border-r border-gray-200">
+                    <i class="fas fa-globe text-yiyu-primary"></i>
+                    <select id="langSelect" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="changeLanguage(this.value)">
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="en-US">English</option>
+                        <option value="ja-JP">日本語</option>
+                    </select>
+                </div>
+                <!-- Currency Switcher -->
+                <div class="flex items-center gap-2 px-3">
+                    <i class="fas fa-coins text-yellow-600"></i>
+                    <select id="currency" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="updateSystemCurrency()">
+                        <option value="TWD">TWD ($)</option>
+                        <option value="JPY">JPY (¥)</option>
+                        <option value="USD">USD ($)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAB TAB -->
+        <div id="tab-lab" class="animate-fade-in space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left Column (Controls) -->
+                <div class="lg:col-span-3 space-y-6">
+                    
+                    <!-- Sales Channel -->
+                    <div class="card border-l-4 border-yiyu-primary">
+                        <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100 flex justify-between">
+                            <span data-i18n="sect_sales">0. 銷售渠道與定價</span>
+                            <i class="fas fa-store text-yiyu-secondary"></i>
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_channel">選擇銷售渠道</label>
+                                <select id="salesChannel" class="w-full p-2 bg-gray-50 border border-gray-200 rounded text-sm outline-none focus:border-yiyu-primary" onchange="recalc()">
+                                    <option value="own" data-i18n="opt_own">自有品牌官網 (DTC)</option>
+                                    <option value="retail" data-i18n="opt_retail">實體通路/上架 (Retail)</option>
+                                    <option value="distributor" data-i18n="opt_dist">經銷代理 (Distributor)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1" data-i18n="lbl_price">單片預計售價 (末端)</label>
+                                <div class="flex items-center">
+                                    <span class="bg-gray-100 p-2 rounded-l text-gray-500 text-sm" id="currencySymbol">$</span>
+                                    <input type="number" id="retailPrice" value="50" class="w-full p-2 border border-gray-200 rounded-r text-sm outline-none focus:border-yiyu-primary text-right" onchange="recalc()">
+                                </div>
+                            </div>
+                            <div class="bg-gray-100 p-3 rounded text-xs text-gray-600">
+                                <span data-i18n="lbl_target_cost">目標成本上限 (COGS):</span> <br>
+                                <span id="targetCostDisplay" class="text-lg font-bold text-yiyu-primary">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Claims -->
+                    <div class="card">
+                        <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100 flex justify-between">
+                            <span data-i18n="sect_claims">1. 核心訴求 Claims</span>
+                            <i class="fas fa-check-double text-yiyu-secondary"></i>
+                        </h3>
+                        <div class="flex flex-wrap gap-2" id="claimsContainer">
+                            <!-- JS Generated -->
+                        </div>
+                    </div>
+
+                    <!-- Fabric -->
+                    <div class="card">
+                        <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100 flex justify-between">
+                            <span data-i18n="sect_fabric">2. 膜布載體 Fabric</span>
+                            <i class="fas fa-layer-group text-yiyu-secondary"></i>
+                        </h3>
+                        <select id="fabricSelect" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm mb-2 outline-none focus:border-yiyu-primary focus:ring-1 focus:ring-yiyu-primary" onchange="recalc()">
+                            <!-- JS Generated -->
+                        </select>
+                        <p id="fabricDesc" class="text-xs text-gray-500 italic mt-1 pl-1">...</p>
+                    </div>
+
+                    <!-- AI Box -->
+                    <div class="card bg-gradient-to-br from-[#E8F3EB] to-[#F5F9F6] border border-[#CDE5D6] shadow-none">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-6 h-6 rounded-full bg-yiyu-primary flex items-center justify-center text-white text-xs shadow-sm"><i class="fas fa-robot"></i></div>
+                            <h3 class="font-bold text-yiyu-base text-sm" data-i18n="sect_ai">AI 智囊</h3>
+                        </div>
+                        <div id="aiSuggestion" class="text-xs text-gray-700 leading-relaxed min-h-[40px] font-medium" data-i18n="ai_waiting">
+                            等待輸入核心訴求...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Column (Formula) -->
+                <div class="lg:col-span-5">
+                    <div class="card h-full flex flex-col border-t-4 border-t-yiyu-base">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-lg text-yiyu-base" data-i18n="sect_structure">配方架構</h3>
+                            <span class="text-xs font-mono bg-yiyu-secondary/20 text-yiyu-base px-2 py-1 rounded font-bold">Total: <span id="totalPct">0</span>%</span>
+                        </div>
+                        
+                        <div class="flex gap-2 mb-4">
+                            <select id="ingredientSelector" class="flex-1 p-2 bg-gray-50 border border-gray-200 rounded text-sm outline-none focus:border-yiyu-primary focus:ring-1 focus:ring-yiyu-primary">
+                                <option value="" data-i18n="opt_add_ing">+ 選擇活性成分...</option>
+                                <!-- JS Generated -->
+                            </select>
+                            <button onclick="addIngredient()" class="bg-yiyu-primary hover:bg-yiyu-base text-white w-10 h-10 rounded shadow-md transition-all flex items-center justify-center"><i class="fas fa-plus"></i></button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto bg-gray-50 rounded border border-gray-100 p-1">
+                            <table class="w-full text-sm">
+                                <thead class="text-xs text-gray-400 border-b border-gray-200 bg-gray-100/50 sticky top-0">
+                                    <tr>
+                                        <th class="p-2 text-left pl-3">INCI Name</th>
+                                        <th class="p-2 text-right w-16">%</th>
+                                        <th class="p-2 text-right w-20" data-i18n="col_cost">Cost</th>
+                                        <th class="p-2 w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="formulaBody">
+                                    <tr class="bg-blue-50/30">
+                                        <td class="p-3 font-medium text-yiyu-base flex items-center gap-2"><i class="fas fa-tint text-blue-300"></i> WATER</td>
+                                        <td class="p-3 text-right text-gray-600" id="waterPct">100.0</td>
+                                        <td class="p-3 text-right text-gray-400">-</td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 p-3 rounded-lg">
+                            <div class="flex justify-between items-end mb-2">
+                                <div class="text-xs text-gray-500 font-medium uppercase tracking-wide" data-i18n="lbl_actual_cost">Actual Cost<br>(Per Sheet)</div>
+                                <div class="text-3xl font-bold text-yiyu-primary currency-val tracking-tight" id="finalCost">¥0</div>
+                            </div>
+                            <div id="costWarning" class="hidden bg-red-50 border border-red-200 text-red-600 p-2 rounded text-xs flex items-center gap-2 animate-pulse">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span><span data-i18n="msg_warning">警告：超出目標成本</span> <span id="overCostAmount" class="font-bold"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column (Charts) -->
+                <div class="lg:col-span-4">
+                    <div class="card h-full flex flex-col">
+                        <h3 class="font-bold text-yiyu-base mb-2 text-xs uppercase tracking-widest flex items-center gap-2">
+                            <span data-i18n="sect_efficacy">3. 效能預測 Efficacy</span>
+                            <i class="fas fa-chart-radar text-yiyu-secondary"></i>
+                        </h3>
+                        <div class="chart-container flex-1">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MARKET TAB -->
+        <div id="tab-market" class="hidden animate-fade-in space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="card lg:col-span-2">
+                    <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
+                        <i class="fas fa-crosshairs text-yiyu-primary"></i> 
+                        <span data-i18n="sect_pos_map">市場定位象限圖 (Positioning Map)</span>
+                    </h3>
+                    <div class="chart-container h-80">
+                        <canvas id="marketMapChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card bg-gradient-to-b from-white to-gray-50 border border-gray-100 flex flex-col">
+                    <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
+                        <i class="fas fa-brain text-yiyu-primary"></i> 
+                        <span data-i18n="sect_sentiment">AI 輿情洞察 (Sentiment)</span>
+                    </h3>
+                    <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+                        
+                        <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                            <div class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider flex justify-between">
+                                <span data-i18n="lbl_keywords">消費者熱議關鍵字</span>
+                                <span class="text-yiyu-primary text-[10px] bg-yiyu-primary/10 px-2 rounded-full" id="currentFocus">--</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2" id="marketKeywords">
+                                <span class="text-xs text-gray-400" data-i18n="msg_select_claim">請先在實驗室選擇核心訴求...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                            <div class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider" data-i18n="lbl_gap">市場缺口 (GAP Analysis)</div>
+                            <p class="text-xs text-gray-600 leading-relaxed" id="marketGap">
+                                <i class="fas fa-search text-gray-300 mr-1"></i>
+                                <span data-i18n="msg_waiting_param">系統正等待配方參數輸入以進行分析...</span>
+                            </p>
+                        </div>
+
+                        <div class="bg-yiyu-primary/5 p-3 rounded-lg border border-yiyu-primary/20">
+                            <div class="text-xs text-yiyu-primary font-bold mb-1" data-i18n="lbl_strategy">建議定價策略</div>
+                            <p class="text-xs text-gray-700 leading-relaxed" id="marketStrategy">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
+                    <i class="fas fa-list-ul text-yiyu-primary"></i> 
+                    <span data-i18n="sect_competitors">競品詳細規格對比</span>
+                </h3>
+                <div class="overflow-x-auto border border-gray-100 rounded-lg">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase">
+                            <tr>
+                                <th class="p-3 pl-4">Brand</th>
+                                <th class="p-3" data-i18n="col_claim">Core Claim</th>
+                                <th class="p-3" data-i18n="col_ingredients">Key Ingredients</th>
+                                <th class="p-3" data-i18n="col_feedback">User Feedback (AI Summary)</th>
+                                <th class="p-3 text-right pr-4" data-i18n="col_retail_price">Est. Retail Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="competitorTable" class="divide-y divide-gray-100 bg-white">
+                            <!-- JS Generated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div id="tab-products" class="hidden animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="productGrid">
+                <!-- JS Generated -->
+            </div>
+        </div>
+
+    </div> 
+
+    <script>
+        // --- I18N CONFIGURATION ---
+        const translations = {
+            'zh-TW': {
+                nav_lab: "配方開發實驗室",
+                nav_market: "市場趨勢洞察",
+                nav_assets: "企業配方資產",
+                title_lab: "配方開發實驗室",
+                desc_lab: "微生態平衡導向的 AI 面膜企劃引擎",
+                title_market: "市場趨勢洞察",
+                desc_market: "AI 驅動的競品分析與定位地圖",
+                title_assets: "企業配方資產",
+                desc_assets: "已上市產品數據庫",
+                sect_sales: "0. 銷售渠道與定價",
+                sect_claims: "1. 核心訴求 Claims",
+                sect_fabric: "2. 膜布載體 Fabric",
+                sect_ai: "AI 智囊",
+                sect_structure: "配方架構",
+                sect_efficacy: "3. 效能預測 Efficacy",
+                sect_pos_map: "市場定位象限圖 (Positioning Map)",
+                sect_sentiment: "AI 輿情洞察 (Sentiment)",
+                sect_competitors: "競品詳細規格對比",
+                lbl_channel: "選擇銷售渠道",
+                lbl_price: "單片預計售價 (末端)",
+                lbl_target_cost: "目標成本上限 (COGS):",
+                lbl_actual_cost: "實際成本 (Per Sheet)",
+                lbl_keywords: "消費者熱議關鍵字",
+                lbl_gap: "市場缺口 (GAP Analysis)",
+                lbl_strategy: "建議定價策略",
+                opt_own: "自有品牌官網 (DTC)",
+                opt_retail: "實體通路/上架 (Retail)",
+                opt_dist: "經銷代理 (Distributor)",
+                opt_add_ing: "+ 選擇活性成分...",
+                col_cost: "成本",
+                col_claim: "主訴求",
+                col_ingredients: "關鍵成分",
+                col_feedback: "用戶反饋 (AI摘要)",
+                col_retail_price: "預估售價",
+                msg_warning: "警告：超出目標成本",
+                msg_select_claim: "請先在實驗室選擇核心訴求...",
+                msg_waiting_param: "系統正等待配方參數輸入以進行分析...",
+                ai_waiting: "等待輸入核心訴求...",
+                ai_prefix: "AI 推薦成分: ",
+                claims: {
+                    oil: "控油平衡", moist: "高效保濕", white: "透亮煥白", aging: "緊緻撫紋", repair: "屏障修護"
+                },
+                radar_labels: ['保濕', '美白', '抗老', '修護', '控油'],
+                map_x: "價格",
+                map_y: "市場聲量"
+            },
+            'en-US': {
+                nav_lab: "Formula Lab",
+                nav_market: "Market Insights",
+                nav_assets: "Enterprise Assets",
+                title_lab: "Formula Development Lab",
+                desc_lab: "Micro-ecology Balance AI Engine",
+                title_market: "Market Insights",
+                desc_market: "AI-Driven Competitor Analysis & Positioning",
+                title_assets: "Enterprise Assets",
+                desc_assets: "Launched Product Database",
+                sect_sales: "0. Sales Channel & Pricing",
+                sect_claims: "1. Core Claims",
+                sect_fabric: "2. Fabric Carrier",
+                sect_ai: "AI Insights",
+                sect_structure: "Formula Structure",
+                sect_efficacy: "3. Efficacy Prediction",
+                sect_pos_map: "Market Positioning Map",
+                sect_sentiment: "AI Sentiment Analysis",
+                sect_competitors: "Competitor Specs Comparison",
+                lbl_channel: "Select Sales Channel",
+                lbl_price: "Est. Retail Price (Unit)",
+                lbl_target_cost: "Target COGS Limit:",
+                lbl_actual_cost: "Actual Cost (Per Sheet)",
+                lbl_keywords: "Consumer Keywords",
+                lbl_gap: "Market Gap Analysis",
+                lbl_strategy: "Pricing Strategy",
+                opt_own: "DTC (Official Site)",
+                opt_retail: "Retail Stores",
+                opt_dist: "Distributors",
+                opt_add_ing: "+ Add Active Ingredient...",
+                col_cost: "Cost",
+                col_claim: "Claim",
+                col_ingredients: "Key Ingredients",
+                col_feedback: "User Feedback (AI)",
+                col_retail_price: "Est. Price",
+                msg_warning: "Warning: Exceeds Target Cost",
+                msg_select_claim: "Select core claims in Lab first...",
+                msg_waiting_param: "Waiting for formula parameters...",
+                ai_waiting: "Waiting for input...",
+                ai_prefix: "AI Suggests: ",
+                claims: {
+                    oil: "Oil Control", moist: "Hydration", white: "Brightening", aging: "Anti-Aging", repair: "Repairing"
+                },
+                radar_labels: ['Moist', 'White', 'Anti-Aging', 'Repair', 'Oil Ctrl'],
+                map_x: "Price",
+                map_y: "Market Volume"
+            },
+            'ja-JP': {
+                nav_lab: "処方開発ラボ",
+                nav_market: "市場トレンド分析",
+                nav_assets: "製品資産",
+                title_lab: "処方開発ラボ",
+                desc_lab: "美肌菌バランス指向 AI 企画エンジン",
+                title_market: "市場トレンド分析",
+                desc_market: "AI駆動の競合分析とポジショニングマップ",
+                title_assets: "企業製品資産",
+                desc_assets: "発売済み製品データベース",
+                sect_sales: "0. 販売チャネルと価格設定",
+                sect_claims: "1. コア訴求 Claims",
+                sect_fabric: "2. シート素材 Fabric",
+                sect_ai: "AI インサイト",
+                sect_structure: "処方構成",
+                sect_efficacy: "3. 効能予測",
+                sect_pos_map: "市場ポジショニングマップ",
+                sect_sentiment: "AI 口コミ分析",
+                sect_competitors: "競合製品スペック比較",
+                lbl_channel: "販売チャネル選択",
+                lbl_price: "予想小売価格 (単価)",
+                lbl_target_cost: "目標原価上限 (COGS):",
+                lbl_actual_cost: "実原価 (Per Sheet)",
+                lbl_keywords: "注目のキーワード",
+                lbl_gap: "市場ギャップ分析",
+                lbl_strategy: "推奨価格戦略",
+                opt_own: "自社EC (DTC)",
+                opt_retail: "実店舗 (Retail)",
+                opt_dist: "代理店 (Distributor)",
+                opt_add_ing: "+ 有効成分を追加...",
+                col_cost: "コスト",
+                col_claim: "訴求",
+                col_ingredients: "キー成分",
+                col_feedback: "ユーザー評価 (AI要約)",
+                col_retail_price: "予想価格",
+                msg_warning: "警告：目標コスト超過",
+                msg_select_claim: "先にラボで訴求を選択してください...",
+                msg_waiting_param: "分析パラメータの入力待ち...",
+                ai_waiting: "訴求を選択してください...",
+                ai_prefix: "AI 推奨成分: ",
+                claims: {
+                    oil: "皮脂ケア", moist: "高保湿", white: "美白・透明感", aging: "エイジングケア", repair: "バリア修復"
+                },
+                radar_labels: ['保湿', '美白', 'エイジング', '修復', '皮脂'],
+                map_x: "価格",
+                map_y: "市場ボリューム"
+            }
+        };
+
+        let currentLang = 'zh-TW';
+
+        // 1. Data Definitions (Multi-lang Support)
+        const exchangeRates = {
+            'TWD': { rate: 1, symbol: 'NT$', unit: 'TWD' },
+            'JPY': { rate: 4.5, symbol: '¥', unit: 'JPY' },
+            'USD': { rate: 0.031, symbol: '$', unit: 'USD' }
+        };
+        let currentCurrency = 'TWD';
+        let formula = [];
+        let activeClaims = [];
+        let radarChart, marketMapChart;
+
+        const C_PRIMARY = '#5F8D75';
+        const C_BG_RADAR = 'rgba(95, 141, 117, 0.2)';
+        
+        // Fabrics DB (Multi-lang desc)
+        const fabricsDB = [
+            { id: "veocel", cost: 3.0, stats: { moist: 5, white: 1, aging: 0, repair: 2, oil: 0 }, 
+              name: { "zh-TW": "水凝絲面膜 (VEOCEL Lyocell)", "en-US": "Hydra Silk (VEOCEL Lyocell)", "ja-JP": "ハイドラシルク (VEOCEL)" },
+              desc: { "zh-TW": "8um 極薄，高載液量，果凍般膚感。", "en-US": "8um ultra-thin, high capacity, jelly-like texture.", "ja-JP": "8um極薄、高保水力、ゼリーのような質感。" } },
+            { id: "plant", cost: 1.5, stats: { moist: 3, white: 0, aging: 0, repair: 1, oil: 0 }, 
+              name: { "zh-TW": "超柔感面膜 (Plant Fiber)", "en-US": "Soft Touch (Plant Fiber)", "ja-JP": "ソフトタッチ (植物繊維)" },
+              desc: { "zh-TW": "高透氣、高柔軟度，親民入門款。", "en-US": "High breathability, soft, entry-level choice.", "ja-JP": "高通気性、高柔軟性、エントリーモデル。" } },
+            { id: "tencel", cost: 2.0, stats: { moist: 4, white: 1, aging: 0, repair: 1, oil: 0 }, 
+              name: { "zh-TW": "輕透絲面膜 (Tencel)", "en-US": "Lite Silk (Tencel)", "ja-JP": "ライトシルク (テンセル)" },
+              desc: { "zh-TW": "堅韌絲滑，吸水性佳，宛如第二層肌膚。", "en-US": "Strong & silky, good absorption, second-skin feel.", "ja-JP": "強靭で滑らか、高吸収性、第二の肌のような感触。" } },
+            { id: "pet3d", cost: 2.5, stats: { moist: 2, white: 0, aging: 4, repair: 1, oil: 0 }, 
+              name: { "zh-TW": "提拉彈力面膜 (PET 3D)", "en-US": "Lifting 3D Mask", "ja-JP": "リフティング3Dマスク" },
+              desc: { "zh-TW": "獨特螺旋結構，雙向拉力，物理提拉效果。", "en-US": "Spiral structure, two-way stretch, physical lifting.", "ja-JP": "独自の螺旋構造、双方向ストレッチ、物理的リフトアップ。" } },
+            { id: "nano", cost: 2.8, stats: { moist: 4, white: 1, aging: 2, repair: 3, oil: 0 }, 
+              name: { "zh-TW": "奈米長纖面膜 (Nano PET)", "en-US": "Nano Fiber Mask", "ja-JP": "ナノファイバーマスク" },
+              desc: { "zh-TW": "2um 奈米纖維，磁鐵般貼合，高強度韌性。", "en-US": "2um nano fiber, magnet-like fit, high tenacity.", "ja-JP": "2umナノ繊維、磁石のような密着力、高靭性。" } },
+            { id: "charcoal", cost: 2.0, stats: { moist: 1, white: 1, aging: 0, repair: 0, oil: 5 }, 
+              name: { "zh-TW": "竹炭面膜 (Bamboo Charcoal)", "en-US": "Bamboo Charcoal Mask", "ja-JP": "竹炭ブラックマスク" },
+              desc: { "zh-TW": "高溫鍛燒天然黑，吸附髒汙，淨化毛孔。", "en-US": "Natural charcoal, absorbs dirt, purifies pores.", "ja-JP": "天然竹炭、汚れ吸着、毛穴浄化。" } },
+            { id: "hydrogel", cost: 12.0, stats: { moist: 5, white: 2, aging: 5, repair: 4, oil: 0 }, 
+              name: { "zh-TW": "微導凝膠膜 (Hydrogel)", "en-US": "Hydrogel Mask", "ja-JP": "ハイドロゲルマスク" },
+              desc: { "zh-TW": "高單價，深層導入，適合高階抗老產品。", "en-US": "Premium, deep penetration, for anti-aging.", "ja-JP": "高単価、深層浸透、高級エイジングケア向け。" } }
+        ];
+
+        // Insights DB (Multi-lang)
+        const insightsDB = {
+            'oil': {
+                focus: { "zh-TW": '控油/油痘肌', "en-US": 'Oil Control/Acne', "ja-JP": '皮脂ケア/ニキビ肌' },
+                keywords: { 
+                    "zh-TW": ['#清爽不黏', '#毛孔收斂', '#去油光', '#不致粉刺', '#鎮靜退紅'],
+                    "en-US": ['#Non-Sticky', '#PoreRefining', '#MatteFinish', '#Non-Comedogenic', '#Calming'],
+                    "ja-JP": ['#さっぱり', '#毛穴引き締め', '#テカリ防止', '#ノンコメド', '#鎮静']
+                },
+                gap: { 
+                    "zh-TW": '目前市場缺乏「高單價且具修護力」的控油產品，多數產品過於廉價且刺激。',
+                    "en-US": 'Market lacks premium oil-control products with repair benefits; most are cheap and harsh.',
+                    "ja-JP": '高級かつ修復力のある皮脂ケア製品が不足しています。多くは安価で刺激が強いです。'
+                },
+                strategy: { 
+                    "zh-TW": '建議強調「酸類溫和煥膚」與「屏障修護」並重，切入中高階市場。',
+                    "en-US": 'Emphasize "Gentle Acid Peeling" + "Barrier Repair" to target the premium segment.',
+                    "ja-JP": '「マイルドピーリング」と「バリア修復」を強調し、中高級市場を狙うことを推奨します。'
+                }
+            },
+            'moist': {
+                focus: { "zh-TW": '保濕/乾肌', "en-US": 'Hydration/Dry Skin', "ja-JP": '保湿/乾燥肌' },
+                keywords: { 
+                    "zh-TW": ['#爆水感', '#長效鎖水', '#不悶痘', '#妝前急救', '#滲透快'],
+                    "en-US": ['#BurstingWater', '#LongLasting', '#Breathable', '#Pre-Makeup', '#FastAbsorb'],
+                    "ja-JP": ['#水光肌', '#長時間保湿', '#閉塞感なし', '#化粧ノリ', '#高浸透']
+                },
+                gap: { 
+                    "zh-TW": '保濕市場飽和，缺口在於「針對極端氣候」或「醫美術後」的高機能保濕。',
+                    "en-US": 'Market saturated. Opportunity in "Extreme Climate" or "Post-Procedure" hydration.',
+                    "ja-JP": '保湿市場は飽和状態。「極端な気候」や「施術後」向けの高機能保湿にチャンスあり。'
+                },
+                strategy: { 
+                    "zh-TW": '避開價格戰，改走「成分黨」路線，強調多重玻尿酸或神經醯胺的高濃度添加。',
+                    "en-US": 'Avoid price wars. Target "Ingredient Junkies" with high-conc. Ceramides/Hyaluronic Acid.',
+                    "ja-JP": '価格競争を避け、「成分重視」層に向け、高濃度セラミドやヒアルロン酸をアピール。'
+                }
+            },
+            'white': {
+                focus: { "zh-TW": '美白/暗沉', "en-US": 'Brightening/Dullness', "ja-JP": '美白/くすみ' },
+                keywords: {
+                    "zh-TW": ['#提亮有感', '#淡化痘印', '#不反黑', '#溫和亮白', '#發光肌'],
+                    "en-US": ['#Glow', '#FadeSpots', '#Non-Darkening', '#GentleBrightening', '#Radiance'],
+                    "ja-JP": ['#トーンアップ', '#ニキビ跡ケア', '#低刺激', '#透明感', '#発光肌']
+                },
+                gap: {
+                    "zh-TW": '消費者害怕美白成分刺激，缺乏「敏感肌也能用的高效美白」產品。',
+                    "en-US": 'Consumers fear irritation. Lack of "Effective Brightening for Sensitive Skin".',
+                    "ja-JP": '美白成分の刺激が懸念点。「敏感肌でも使える高機能美白」が不足。'
+                },
+                strategy: {
+                    "zh-TW": '結合舒緩成分 (積雪草) 與美白成分，主打「溫和高效」。',
+                    "en-US": 'Combine soothing agents (Cica) with brighteners. Claim "Gentle & Effective".',
+                    "ja-JP": '鎮静成分（CICA）と美白成分を組み合わせ、「優しく高効果」を訴求。'
+                }
+            },
+            'aging': {
+                focus: { "zh-TW": '抗老/熟齡', "en-US": 'Anti-Aging', "ja-JP": 'エイジングケア' },
+                keywords: {
+                    "zh-TW": ['#撫平細紋', '#緊緻拉提', '#澎潤感', '#改善法令紋', '#熬夜神器'],
+                    "en-US": ['#AntiWrinkle', '#Lifting', '#Plumping', '#LineReduction', '#NightRepair'],
+                    "ja-JP": ['#シワ改善', '#リフトアップ', '#ハリ感', '#ほうれい線', '#徹夜対策']
+                },
+                gap: {
+                    "zh-TW": '開架市場缺乏真正含有有效濃度 (如 PDRN, 胜肽) 的抗老面膜。',
+                    "en-US": 'Mass market lacks anti-aging masks with effective concentrations (PDRN, Peptides).',
+                    "ja-JP": 'ドラッグストア市場には、有効濃度（PDRN、ペプチド等）を含む製品が不足。'
+                },
+                strategy: {
+                    "zh-TW": '使用高單價膜布 (生物纖維/微導)，配合高濃度活性物，打造旗艦級產品。',
+                    "en-US": 'Use premium fabric (Bio-cellulose) + high actives for a flagship product.',
+                    "ja-JP": '高級シート（バイオセルロース等）と高濃度成分で、フラッグシップ製品を構築。'
+                }
+            },
+            'repair': {
+                focus: { "zh-TW": '修護/敏感', "en-US": 'Repair/Sensitive', "ja-JP": '修復/敏感肌' },
+                keywords: {
+                    "zh-TW": ['#退紅神速', '#舒緩乾癢', '#增厚角質', '#無酒精', '#換季救星'],
+                    "en-US": ['#FastRednessRelief', '#SootheItch', '#BarrierBuild', '#AlcoholFree', '#SeasonalHelp'],
+                    "ja-JP": ['#赤み鎮静', '#痒み緩和', '#バリア強化', '#アルコールフリー', '#季節の変わり目']
+                },
+                gap: {
+                    "zh-TW": '針對「口罩肌」或「刷酸後」的修護需求持續上升，但專用產品不多。',
+                    "en-US": 'Rising demand for "Maskne" or "Post-Acid" repair, but few dedicated products.',
+                    "ja-JP": '「マスク荒れ」や「ピーリング後」の需要増だが、専用製品は少ない。'
+                },
+                strategy: {
+                    "zh-TW": '強調「極簡配方」與「無添加」，建立專業醫美形象。',
+                    "en-US": 'Emphasize "Minimalist Formula" & "Free-From" to build a Derma-cosmetic image.',
+                    "ja-JP": '「ミニマル処方」と「無添加」を強調し、ドクターズコスメのイメージを確立。'
+                }
+            }
+        };
+
+        // Ingredients (INCI mostly universal, tags internal)
+        const ingredients = [
+            { name: "Butylene Glycol", cost: 120, stats: { moist: 2, white: 0, aging: 0, repair: 0, oil: 0 }, tags:['all'] },
+            { name: "Niacinamide (B3)", cost: 850, stats: { moist: 1, white: 5, aging: 2, repair: 3, oil: 3 }, tags:['white','oil','aging'] },
+            { name: "Azelaic Acid", cost: 2800, stats: { moist: 0, white: 3, aging: 0, repair: 0, oil: 5 }, tags:['oil'] },
+            { name: "Tea Tree Oil", cost: 3200, stats: { moist: 0, white: 0, aging: 0, repair: 2, oil: 5 }, tags:['oil','repair'] },
+            { name: "PDRN (DNA-Na)", cost: 15000, stats: { moist: 2, white: 0, aging: 5, repair: 5, oil: 0 }, tags:['aging','repair'] },
+            { name: "Centella Asiatica", cost: 1800, stats: { moist: 1, white: 0, aging: 0, repair: 5, oil: 1 }, tags:['repair'] },
+            { name: "Vit C (Ethyl Ascorbic)", cost: 4500, stats: { moist: 0, white: 5, aging: 3, repair: 0, oil: 0 }, tags:['white'] },
+            { name: "Ceramide Complex", cost: 6500, stats: { moist: 4, white: 0, aging: 2, repair: 5, oil: 0 }, tags:['repair','moist'] },
+            { name: "Sodium Hyaluronate", cost: 3000, stats: { moist: 5, white: 0, aging: 1, repair: 1, oil: 0 }, tags:['moist'] },
+            { name: "Hexapeptide-8", cost: 12000, stats: { moist: 1, white: 0, aging: 5, repair: 0, oil: 0 }, tags:['aging'] }
+        ];
+
+        // Products DB (Multi-lang)
+        // [修改] 這裡為每個產品指定了不同的 Placeholder 圖片，請替換為實際產品圖連結
+        const productsDB = [
+            { 
+                name: { "zh-TW": "淨光平衡面膜", "en-US": "Pure Balance Mask", "ja-JP": "ピュアバランスマスク" },
+                skin: { "zh-TW": "油性肌", "en-US": "Oily Skin", "ja-JP": "脂性肌" },
+                key: "Azelaic Acid + Tea Tree", 
+                color: "border-emerald-500", 
+                desc: { "zh-TW": "微生態控油平衡系統，接觸空氣自動產生細緻泡泡。", "en-US": "Micro-ecology balance. Self-foaming upon air contact.", "ja-JP": "美肌菌バランス。空気に触れると自動発泡する技術。" },
+                img: "equli.jpg" 
+            },
+            { 
+                name: { "zh-TW": "恆光逆齡面膜", "en-US": "Ageless Glow Mask", "ja-JP": "エイジレスグロウマスク" },
+                skin: { "zh-TW": "熟齡肌", "en-US": "Mature Skin", "ja-JP": "年齢肌" },
+                key: "PDRN + Peptides", 
+                color: "border-purple-400", 
+                desc: { "zh-TW": "深層賦活緊緻配方，提升肌膚彈力與保水感。", "en-US": "Deep revitalizing formula. Boosts elasticity & moisture.", "ja-JP": "深層活性化処方。ハリと保水力を高める。" },
+                img: "reproduce.jpg"
+            },
+            { 
+                name: { "zh-TW": "柔光修護面膜", "en-US": "Soft Repair Mask", "ja-JP": "ソフトリペアマスク" },
+                skin: { "zh-TW": "敏感肌", "en-US": "Sensitive Skin", "ja-JP": "敏感肌" },
+                key: "CICA + Ceramide", 
+                color: "border-pink-400", 
+                desc: { "zh-TW": "舒緩修護屏障強韌，專為不穩定膚況設計。", "en-US": "Soothing barrier repair. For unstable skin conditions.", "ja-JP": "鎮静バリア修復。不安定な肌コンディション向け。" },
+                img: "smooth.jpg"
+            },
+            { 
+                name: { "zh-TW": "極光煥白面膜", "en-US": "Aurora White Mask", "ja-JP": "オーロラホワイトマスク" },
+                skin: { "zh-TW": "暗沉肌", "en-US": "Dull Skin", "ja-JP": "くすみ肌" },
+                key: "Vit C + Glutathione", 
+                color: "border-gray-400", 
+                desc: { "zh-TW": "肌膚透亮光澤對策，改善膚色不均。", "en-US": "Radiance solution. Improves uneven skin tone.", "ja-JP": "透明感対策。肌の色ムラを改善。" },
+                img: "white.jpg"
+            },
+            { 
+                name: { "zh-TW": "勻光整肌面膜", "en-US": "Aurora White Mask", "ja-JP": "オーロラホワイトマスク" },
+                skin: { "zh-TW": "暗沉肌", "en-US": "Dull Skin", "ja-JP": "くすみ肌" },
+                key: "Vit C + Glutathione", 
+                color: "border-gray-400", 
+                desc: { "zh-TW": "肌膚透亮光澤對策，改善膚色不均。", "en-US": "Radiance solution. Improves uneven skin tone.", "ja-JP": "透明感対策。肌の色ムラを改善。" },
+                img: "radiance.jpg"
+            },
+
+        ];
+
+        // Competitors DB (Multi-lang feedback/category)
+        const competitorsDB = [
+            { b: "Anua (KR)", p: "Azelaic Acid 15", k: "Azelaic, CICA", price: 25, volume: 85, 
+              cat: { "zh-TW": "控油調理", "en-US": "Oil Control", "ja-JP": "皮脂ケア" },
+              fb: { "zh-TW": "鎮靜效果快，但精華液偏少。", "en-US": "Fast calming, but low serum amount.", "ja-JP": "鎮静は早いが、美容液が少なめ。" } },
+            { b: "Lululun (JP)", p: "Hydra-F", k: "Charcoal, Fullerene", price: 28, volume: 95, 
+              cat: { "zh-TW": "毛孔緊緻", "en-US": "Pore Firming", "ja-JP": "毛穴引き締め" },
+              fb: { "zh-TW": "備長炭布膜服貼，CP值高。", "en-US": "Charcoal sheet fits well. High CP value.", "ja-JP": "炭シートが密着。コスパ高い。" } },
+            { b: "Quality 1st", p: "Super VC100", k: "Vit C, Nanocapsules", price: 25, volume: 90, 
+              cat: { "zh-TW": "亮白毛孔", "en-US": "Brightening", "ja-JP": "美白毛穴" },
+              fb: { "zh-TW": "稍微有刺激感，敏感肌慎用。", "en-US": "Slight tingling, caution for sensitive skin.", "ja-JP": "少しピリつく、敏感肌は注意。" } },
+            { b: "Medicube", p: "PDRN Pink", k: "PDRN, Collagen", price: 120, volume: 40, 
+              cat: { "zh-TW": "高階修護", "en-US": "Adv. Repair", "ja-JP": "高度修復" },
+              fb: { "zh-TW": "效果驚人但價格偏高，適合急救。", "en-US": "Amazing results but pricey. Good for SOS.", "ja-JP": "効果は凄いが高い。救急用に。" } },
+            { b: "Torriden (KR)", p: "DIVE IN", k: "5D Hyaluronic", price: 60, volume: 75, 
+              cat: { "zh-TW": "深層保濕", "en-US": "Deep Moist", "ja-JP": "深層保湿" },
+              fb: { "zh-TW": "非常溫和，適合所有膚質。", "en-US": "Very gentle, suitable for all skin types.", "ja-JP": "非常にマイルド、全肌質対応。" } }
+        ];
+
+        // 2. Init & Core Functions
+        window.onload = function() {
+            initCharts(); // Fix: Initialize charts first
+            populateSelect();
+            changeLanguage('zh-TW'); // Then set language (triggers updates)
+            document.getElementById('fabricSelect').value = "0"; 
+            recalc(); // Final recalc
+        };
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang];
+
+            // 1. Static Text Updates
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(t[key]) el.innerText = t[key];
+            });
+
+            // 2. Specific Nav Titles Logic (handled by data-i18n now, but refresh active tab titles)
+            const activeNav = document.querySelector('.nav-item.active');
+            if(activeNav) {
+                const id = activeNav.getAttribute('onclick').match(/'([^']+)'/)[1];
+                switchTab(id, activeNav); // Refresh titles
+            }
+
+            // 3. Re-render Dynamic Content
+            populateFabricSelect();
+            renderClaims();
+            renderProducts();
+            renderMarketTable();
+            updateAiSuggestion();
+            updateMarketInsights();
+            updateChartsLang(); // Update Chart Labels
+            recalc();
+        }
+
+        function switchTab(id, el) {
+            document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('hidden'));
+            document.getElementById(`tab-${id}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            
+            const t = translations[currentLang];
+            const titles = {
+                'lab': [t.title_lab, t.desc_lab], 
+                'market': [t.title_market, t.desc_market], 
+                'products': [t.title_assets, t.desc_assets]
+            };
+            document.getElementById('pageTitle').innerText = titles[id][0];
+            document.getElementById('pageDesc').innerText = titles[id][1];
+        }
+
+        // 3. Dynamic Renders
+        function populateFabricSelect() {
+            const sel = document.getElementById('fabricSelect');
+            const currentVal = sel.value || "0";
+            sel.innerHTML = fabricsDB.map((f, i) => `<option value="${i}">${f.name[currentLang]}</option>`).join('');
+            sel.value = currentVal; // Maintain selection
+            // Update description text immediately
+            document.getElementById('fabricDesc').innerText = fabricsDB[sel.value || 0].desc[currentLang];
+        }
+
+        function renderClaims() {
+            const container = document.getElementById('claimsContainer');
+            const t = translations[currentLang];
+            const claimKeys = ['oil', 'moist', 'white', 'aging', 'repair'];
+            
+            container.innerHTML = claimKeys.map(k => {
+                const isSelected = activeClaims.includes(k) ? 'selected' : '';
+                return `<span class="tag-select ${isSelected}" onclick="toggleClaim(this, '${k}')">${t.claims[k]}</span>`;
+            }).join('');
+        }
+
+        function renderProducts() {
+            document.getElementById('productGrid').innerHTML = productsDB.map(p => `
+                <div class="card border-t-4 ${p.color} cursor-pointer group hover:-translate-y-1 transition-all flex flex-col h-full">
+                    <div class="flex-1">
+                        <h3 class="font-bold text-yiyu-base group-hover:text-yiyu-primary transition text-lg">${p.name[currentLang]}</h3>
+                        <div class="text-xs text-gray-500 mt-2 leading-relaxed">${p.desc[currentLang]}</div>
+                        <div class="mt-4 pt-4 border-t border-gray-100 text-xs font-medium text-gray-400">Key: ${p.key}</div>
+                    </div>
+                    <div class="mt-4 overflow-hidden rounded-lg shadow-sm border border-gray-100">
+                        <img src="${p.img}" alt="Product" 
+                             class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                </div>`).join('');
+        }
+
+        function renderMarketTable() {
+            const tbody = document.getElementById('competitorTable');
+            const rate = exchangeRates[currentCurrency];
+            tbody.innerHTML = competitorsDB.map(c => `
+                <tr class="hover:bg-gray-50 border-b border-gray-50 transition">
+                    <td class="p-3 pl-4 font-medium text-gray-700">${c.b}<div class="text-xs text-gray-400">${c.p}</div></td>
+                    <td class="p-3"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-medium">${c.cat[currentLang]}</span></td>
+                    <td class="p-3 text-xs text-yiyu-primary font-bold">${c.k}</td>
+                    <td class="p-3 text-xs text-gray-500 italic">"${c.fb[currentLang]}"</td>
+                    <td class="p-3 text-right pr-4 font-mono font-bold text-gray-600">${rate.symbol}${(c.price*rate.rate).toFixed(0)}</td>
+                </tr>`).join('');
+        }
+
+        // 4. Logic & Interactivity
+        function toggleClaim(el, claim) {
+            el.classList.toggle('selected');
+            if(activeClaims.includes(claim)) activeClaims = activeClaims.filter(c=>c!==claim);
+            else activeClaims.push(claim);
+            
+            updateAiSuggestion();
+            updateMarketInsights();
+        }
+
+        function updateAiSuggestion() {
+            const box = document.getElementById('aiSuggestion');
+            const t = translations[currentLang];
+            if(activeClaims.length === 0) { box.innerText = t.ai_waiting; return; }
+            let hits = ingredients.filter(ing => activeClaims.some(c => ing.tags.includes(c)));
+            let uniqueHits = [...new Set(hits.map(h => h.name.split(' ')[0]))];
+            box.innerHTML = `${t.ai_prefix}<span class="font-bold text-yiyu-primary">${uniqueHits.join(', ')}</span>`;
+        }
+
+        function updateMarketInsights() {
+            const kwContainer = document.getElementById('marketKeywords');
+            const gapContainer = document.getElementById('marketGap');
+            const stratContainer = document.getElementById('marketStrategy');
+            const focusLabel = document.getElementById('currentFocus');
+            const t = translations[currentLang];
+
+            if(activeClaims.length === 0) {
+                focusLabel.innerText = "--";
+                kwContainer.innerHTML = `<span class="text-xs text-gray-400">${t.msg_select_claim}</span>`;
+                gapContainer.innerHTML = `<i class="fas fa-search text-gray-300 mr-1"></i> ${t.msg_waiting_param}`;
+                stratContainer.innerText = "--";
+                return;
+            }
+
+            const mainClaim = activeClaims[activeClaims.length - 1];
+            const data = insightsDB[mainClaim];
+
+            if(data) {
+                focusLabel.innerText = data.focus[currentLang];
+                
+                let kwHtml = '';
+                const colors = ['bg-red-50 text-red-600', 'bg-blue-50 text-blue-600', 'bg-green-50 text-green-600', 'bg-purple-50 text-purple-600'];
+                data.keywords[currentLang].forEach((k, i) => {
+                    let colorClass = colors[i % colors.length];
+                    kwHtml += `<span class="text-xs ${colorClass} px-2 py-1 rounded border border-opacity-50">${k}</span>`;
+                });
+                kwContainer.innerHTML = kwHtml;
+
+                gapContainer.innerHTML = `<strong class="text-yiyu-secondary">Analysis:</strong> ${data.gap[currentLang]}`;
+                stratContainer.innerHTML = data.strategy[currentLang];
+            }
+        }
+
+        function populateSelect() {
+            const sel = document.getElementById('ingredientSelector');
+            ingredients.forEach((ing, i) => sel.innerHTML += `<option value="${i}">${ing.name}</option>`);
+        }
+
+        function addIngredient() {
+            const idx = document.getElementById('ingredientSelector').value;
+            if(idx === "") return;
+            formula.push({...ingredients[idx], pct: 1.0}); 
+            renderFormula();
+            recalc();
+        }
+
+        function renderFormula() {
+            const tbody = document.getElementById('formulaBody');
+            let html = `<tr class="bg-yiyu-secondary/10"><td class="p-3 font-medium text-yiyu-base flex items-center gap-2"><i class="fas fa-tint text-yiyu-secondary"></i> WATER</td><td class="p-3 text-right text-gray-600" id="waterPct">100.0</td><td class="p-3 text-right text-gray-400">-</td><td></td></tr>`;
+            formula.forEach((item, i) => {
+                html += `
+                    <tr class="border-b border-gray-50 group hover:bg-gray-50 transition-colors">
+                        <td class="p-3 text-gray-700 font-medium">${item.name}</td>
+                        <td class="p-3 text-right"><input type="number" step="0.1" value="${item.pct}" onchange="formula[${i}].pct=parseFloat(this.value);recalc()" class="w-16 text-right border border-gray-200 rounded p-1 outline-none focus:border-yiyu-primary bg-white"></td>
+                        <td class="p-3 text-right text-xs text-gray-500 cost-cell font-mono pt-4" data-base="${(item.cost*item.pct/100).toFixed(1)}">0</td>
+                        <td class="p-3 text-center"><button onclick="formula.splice(${i},1);renderFormula();recalc()" class="text-gray-300 hover:text-red-400 transition"><i class="fas fa-times"></i></button></td>
+                    </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function recalc() {
+            const rate = exchangeRates[currentCurrency];
+            const fabIdx = document.getElementById('fabricSelect').value || 0;
+            const fab = fabricsDB[fabIdx];
+
+            let bulkCostKG = formula.reduce((s,i) => s+(i.cost*i.pct/100), 0);
+            let fabCostSheet = fab.cost;
+            let totalSheetCost = (bulkCostKG * 0.025) + fabCostSheet; 
+            
+            let channel = document.getElementById('salesChannel').value;
+            let retailPrice = parseFloat(document.getElementById('retailPrice').value) || 0;
+            let retailPriceTWD = retailPrice / rate.rate; 
+            
+            let marginRatio = 0.3; 
+            if(channel === 'retail') marginRatio = 0.15; 
+            if(channel === 'distributor') marginRatio = 0.20; 
+
+            let targetCostTWD = retailPriceTWD * marginRatio;
+
+            let totalPct = formula.reduce((s,i) => s+i.pct, 0);
+            let water = Math.max(0, 100 - totalPct);
+            document.getElementById('waterPct').innerText = water.toFixed(1);
+            document.getElementById('totalPct').innerText = (totalPct + water).toFixed(1);
+            document.getElementById('fabricDesc').innerText = fab.desc[currentLang];
+
+            document.getElementById('finalCost').innerText = `${rate.symbol}${(totalSheetCost*rate.rate).toFixed(1)}`;
+            document.getElementById('targetCostDisplay').innerText = `${rate.symbol}${(targetCostTWD*rate.rate).toFixed(1)}`;
+            
+            document.querySelectorAll('.cost-cell').forEach(c => {
+                c.innerText = (parseFloat(c.dataset.base) * rate.rate).toFixed(1);
+            });
+
+            const warningBox = document.getElementById('costWarning');
+            const diff = totalSheetCost - targetCostTWD;
+            if(diff > 0) {
+                warningBox.classList.remove('hidden');
+                document.getElementById('overCostAmount').innerText = `+${rate.symbol}${(diff*rate.rate).toFixed(1)}`;
+                document.getElementById('finalCost').classList.add('text-red-600');
+            } else {
+                warningBox.classList.add('hidden');
+                document.getElementById('finalCost').classList.remove('text-red-600');
+            }
+            
+            updateRadar();
+        }
+
+        function updateRadar() {
+            if (!radarChart) return; // Guard clause
+            let scores = { moist:0, white:0, aging:0, repair:0, oil:0 };
+            let fStats = fabricsDB[document.getElementById('fabricSelect').value || 0].stats;
+            for(let k in scores) scores[k] += fStats[k];
+            formula.forEach(i => {
+                for(let k in scores) scores[k] += i.stats[k] * (i.pct>0?1:0);
+            });
+            radarChart.data.datasets[0].data = Object.values(scores);
+            radarChart.update();
+        }
+
+        function updateSystemCurrency() {
+            currentCurrency = document.getElementById('currency').value;
+            document.getElementById('currencySymbol').innerText = exchangeRates[currentCurrency].symbol;
+            recalc();
+            renderMarketTable();
+            updateMarketMap();
+        }
+        
+        function updateChartsLang() {
+            const t = translations[currentLang];
+            // Radar
+            if(radarChart) {
+                radarChart.data.labels = t.radar_labels;
+                radarChart.update();
+            }
+            // Market Map
+            if(marketMapChart) {
+                marketMapChart.options.scales.x.title.text = t.map_x;
+                marketMapChart.options.scales.y.title.text = t.map_y;
+                marketMapChart.update();
+            }
+        }
+
+        function updateMarketMap() {
+            if (!marketMapChart) return; // Guard clause
+            const rate = exchangeRates[currentCurrency];
+            const data = competitorsDB.map(c => ({
+                x: c.price * rate.rate,
+                y: c.volume,
+                r: 8,
+                label: c.b
+            }));
+            marketMapChart.data.datasets[0].data = data;
+            // Also update titles based on current Lang
+            updateChartsLang();
+        }
+
+        function initCharts() {
+            const ctxR = document.getElementById('radarChart').getContext('2d');
+            radarChart = new Chart(ctxR, {
+                type: 'radar',
+                data: {
+                    labels: ['保濕', '美白', '抗老', '修護', '控油'], // Initial, will be updated by i18n
+                    datasets: [{
+                        label: 'Score',
+                        data: [0,0,0,0,0],
+                        backgroundColor: C_BG_RADAR,
+                        borderColor: C_PRIMARY,
+                        borderWidth: 2,
+                        pointBackgroundColor: C_PRIMARY,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            min: 0, max: 12, ticks: { display: false },
+                            pointLabels: { display: true, font: { size: 12, weight: 'bold' }, color: '#5F8D75' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            const ctxM = document.getElementById('marketMapChart').getContext('2d');
+            marketMapChart = new Chart(ctxM, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Competitors',
+                        data: [], 
+                        backgroundColor: 'rgba(95, 141, 117, 0.6)',
+                        borderColor: '#2D4A3E',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw.label + ': (Price: ' + context.raw.x.toFixed(0) + ')';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Price' },
+                            grid: { color: '#f3f4f6' }
+                        },
+                        y: { 
+                            title: { display: true, text: 'Market Volume' },
+                            min: 0, max: 100,
+                            grid: { color: '#f3f4f6' }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
