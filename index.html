@@ -7,6 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- 引入 html2pdf.js 用於生成 PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -100,7 +102,7 @@
     <!-- Sidebar -->
     <div class="sidebar w-20 md:w-64 flex-shrink-0 flex flex-col shadow-2xl z-20">
         <div class="logo-section flex flex-col">
-            <img src="logo.png" alt="AMS BioteQ" class="w-32 md:w-40 mb-2 object-contain h-auto" id="mainLogo">
+            <img src="logo.png" alt="AMS BioteQ" class="w-32 md:w-40 mb-2 object-contain h-auto" id="mainLogo" onerror="this.onerror=null;this.src='https://placehold.co/200x60/2D4A3E/FFFFFF?text=AMS+BioteQ'">
             <div class="subtitle">the art of micro-ecology balance</div>
         </div>
         <nav class="mt-6 flex-1 px-2 space-y-2">
@@ -405,11 +407,11 @@
         ];
 
         const productsDB = [
-            { name: { "zh-TW": "淨光平衡面膜", "en-US": "Pure Balance Mask", "ja-JP": "ピュアバランスマスク" }, key: "Azelaic Acid + Tea Tree", desc: { "zh-TW": "微生態控油平衡系統", "en-US": "Micro-ecology balance system", "ja-JP": "美肌菌バランスシステム" }, img: "淨光.png" },
-            { name: { "zh-TW": "恆光逆齡面膜", "en-US": "Ageless Glow Mask", "ja-JP": "エイジレスグロウマスク" }, key: "PDRN + Peptides", desc: { "zh-TW": "深層賦活緊緻配方", "en-US": "Deep revitalizing formula", "ja-JP": "深層活性化処方" }, img: "恆光.png" },
-            { name: { "zh-TW": "柔光修護面膜", "en-US": "Soft Repair Mask", "ja-JP": "ソフトリペアマスク" }, key: "CICA + Ceramide", desc: { "zh-TW": "舒緩修護屏障強韌", "en-US": "Soothing barrier repair", "ja-JP": "鎮静バリア修復" }, img: "柔光.png" },
-            { name: { "zh-TW": "極光煥白面膜", "en-US": "Aurora White Mask", "ja-JP": "オーロラホワイトマスク" }, key: "Vit C + Glutathione", desc: { "zh-TW": "肌膚透亮光澤對策", "en-US": "Radiance solution", "ja-JP": "透明感対策" }, img: "極光.png" },
-            { name: { "zh-TW": "勻光整肌面膜", "en-US": "Radiance Mask", "ja-JP": "ラディアンスマスク" }, key: "Collagen + HA", desc: { "zh-TW": "基礎滋潤柔嫩", "en-US": "Essential hydration", "ja-JP": "基礎保湿" }, img: "勻光.png" }
+            { name: { "zh-TW": "淨光平衡面膜", "en-US": "Pure Balance Mask", "ja-JP": "ピュアバランスマスク" }, key: "Azelaic Acid + Tea Tree", desc: { "zh-TW": "微生態控油平衡系統", "en-US": "Micro-ecology balance system", "ja-JP": "美肌菌バランスシステム" }, img: "淨光.jpg" },
+            { name: { "zh-TW": "恆光逆齡面膜", "en-US": "Ageless Glow Mask", "ja-JP": "エイジレスグロウマスク" }, key: "PDRN + Peptides", desc: { "zh-TW": "深層賦活緊緻配方", "en-US": "Deep revitalizing formula", "ja-JP": "深層活性化処方" }, img: "恆光.jpg" },
+            { name: { "zh-TW": "柔光修護面膜", "en-US": "Soft Repair Mask", "ja-JP": "ソフトリペアマスク" }, key: "CICA + Ceramide", desc: { "zh-TW": "舒緩修護屏障強韌", "en-US": "Soothing barrier repair", "ja-JP": "鎮静バリア修復" }, img: "柔光.jpg" },
+            { name: { "zh-TW": "極光煥白面膜", "en-US": "Aurora White Mask", "ja-JP": "オーロラホワイトマスク" }, key: "Vit C + Glutathione", desc: { "zh-TW": "肌膚透亮光澤對策", "en-US": "Radiance solution", "ja-JP": "透明感対策" }, img: "極光.jpg" },
+            { name: { "zh-TW": "勻光整肌面膜", "en-US": "Radiance Mask", "ja-JP": "ラディアンスマスク" }, key: "Collagen + HA", desc: { "zh-TW": "基礎滋潤柔嫩", "en-US": "Essential hydration", "ja-JP": "基礎保湿" }, img: "勻光.jpg" }
         ];
 
         function printReport() {
@@ -456,7 +458,7 @@
             
             document.getElementById('printProductGrid').innerHTML = productsDB.map(p => `
                 <div class="print-product">
-                    <img src="${p.img}" alt="${p.name[currentLang]}">
+                    <img src="${p.img}" alt="${p.name[currentLang]}" onerror="this.onerror=null;this.src='https://placehold.co/400x300/2D4A3E/FFFFFF?text=Image+Not+Found'">
                     <h4>${p.name[currentLang]}</h4>
                     <p>${p.desc[currentLang]}</p>
                     <div class="key">Key: ${p.key}</div>
@@ -507,7 +509,7 @@
         function renderProducts() {
             document.getElementById('productGrid').innerHTML = productsDB.map(p => `
                 <div class="card border-t-4 border-yiyu-primary">
-                    <img src="${p.img}" alt="${p.name[currentLang]}" class="w-full h-48 object-cover rounded-md mt-3 mb-2">
+                    <img src="${p.img}" alt="${p.name[currentLang]}" class="w-full h-48 object-cover rounded-md mt-3 mb-2" onerror="this.onerror=null;this.src='https://placehold.co/400x300/2D4A3E/FFFFFF?text=Image+Not+Found'">
                     <h3 class="font-bold text-yiyu-base text-lg">${p.name[currentLang]}</h3>
                     <p class="text-xs text-gray-500 mt-2">${p.desc[currentLang]}</p>
                     <p class="mt-4 pt-4 border-t text-xs text-gray-400">Key: ${p.key}</p>
