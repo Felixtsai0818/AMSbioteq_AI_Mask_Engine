@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Mask Engine (AMS BioteQ Co., Ltd.)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        yiyu: {
+                            base: '#2D4A3E',
+                            primary: '#5F8D75',
+                            secondary: '#A3B18A',
+                            accent: '#D0E1D4',
+                            bg: '#F9F8F6',
+                            text: '#2C3333',
+                            danger: '#EF4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F9F8F6; color: #2C3333; }
+        .sidebar { background: linear-gradient(180deg, #2D4A3E 0%, #1B352C 100%); color: white; }
+        .logo-section { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .subtitle { font-family: 'Georgia', serif; font-style: italic; font-size: 0.7rem; color: #A3B18A; letter-spacing: 0.8px; margin-top: 6px; opacity: 0.9; }
+        .nav-item { padding: 16px 20px; cursor: pointer; transition: all 0.3s ease; border-left: 4px solid transparent; color: #A3B18A; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(95, 141, 117, 0.15); border-left-color: #5F8D75; color: #fff; font-weight: 500; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(45, 74, 62, 0.04); padding: 24px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid rgba(163, 177, 138, 0.15); }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(45, 74, 62, 0.08); border-color: rgba(95, 141, 117, 0.3); }
+        .tag-select { cursor: pointer; border: 1px solid #A3B18A; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; color: #5F8D75; transition: 0.2s; background: white; }
+        .tag-select:hover { background: #F0F5F2; border-color: #5F8D75; }
+        .tag-select.selected { background: #5F8D75; color: white; border-color: #5F8D75; }
+        .chart-container { position: relative; height: 300px; width: 100%; }
+        .animate-fade-in { animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .pdf-btn { background: linear-gradient(135deg, #2D4A3E 0%, #5F8D75 100%); color: white; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; border: none; display: flex; align-items: center; gap: 8px; }
+        .pdf-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(45, 74, 62, 0.3); }
+        
+        /* ==================== PRINT STYLES ==================== */
+        @media print {
+            body, html { background: white !important; margin: 0; padding: 0; }
+            .sidebar, .pdf-btn, .no-print, [onclick], button, select, input, .sticky { display: none !important; }
+            #mainContent { margin: 0 !important; padding: 0 !important; width: 100% !important; overflow: visible !important; }
+            #tab-lab, #tab-market, #tab-products { display: none !important; }
+            #printReport { display: block !important; }
+            
+            @page { size: A4 portrait; margin: 0; }
+            
+            .print-page { width: 210mm; min-height: 297mm; padding: 15mm; margin: 0 auto; background: white; page-break-after: always; box-sizing: border-box; position: relative; }
+            .print-page:last-child { page-break-after: auto; }
+            
+            .print-header { background: #2D4A3E !important; color: white !important; padding: 15px 20px; margin: -15mm -15mm 20px -15mm; width: calc(100% + 30mm); display: flex; justify-content: space-between; align-items: center; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .print-header h1 { font-size: 18px; font-weight: bold; margin: 0; }
+            .print-header .tagline { font-size: 10px; color: #A3B18A; font-style: italic; margin-top: 4px; }
+            .print-header .page-title { font-size: 12px; color: #D0E1D4; }
+            
+            .print-footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; border-top: 1px solid #A3B18A; padding-top: 10px; font-size: 10px; color: #666; display: flex; justify-content: space-between; }
+            
+            .print-card { background: #fafafa !important; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 15px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .print-card h3 { font-size: 12px; font-weight: bold; color: #2D4A3E; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; }
+            
+            .print-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+            .print-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+            
+            .print-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            .print-table th { background: #2D4A3E !important; color: white !important; padding: 10px; text-align: left; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .print-table td { padding: 10px; border-bottom: 1px solid #e0e0e0; }
+            .print-table tr:nth-child(even) { background: #f5f5f5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            .print-product { background: white !important; border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; border-top: 3px solid #5F8D75; display: flex; flex-direction: column; }
+            .print-product img { width: 100%; height: 120px; object-fit: cover; margin-bottom: 10px; border-radius: 4px; }
+            .print-product h4 { font-size: 13px; font-weight: bold; color: #2D4A3E; margin-bottom: 8px; }
+            .print-product p { font-size: 10px; color: #666; margin-bottom: 8px; line-height: 1.5; }
+            .print-product .key { font-size: 10px; color: #5F8D75; font-weight: 600; margin-top: auto; }
+            
+            .print-highlight { background: #E8F3EB !important; border: 1px solid #CDE5D6; border-radius: 8px; padding: 15px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            .print-tag { display: inline-block; background: #5F8D75 !important; color: white !important; padding: 4px 12px; border-radius: 15px; font-size: 10px; margin: 3px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            .print-cost { font-size: 28px; font-weight: bold; color: #5F8D75; }
+            .print-section-title { font-size: 16px; font-weight: bold; color: #2D4A3E; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #5F8D75; }
+        }
+        
+        #printReport { display: none; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm md:text-base">
+
+    <!-- Sidebar -->
+    <div class="sidebar w-20 md:w-64 flex-shrink-0 flex flex-col shadow-2xl z-20">
+        <div class="logo-section flex flex-col">
+            <img src="logo.png" alt="AMS BioteQ" class="w-32 md:w-40 mb-2 object-contain h-auto" id="mainLogo">
+            <div class="subtitle">the art of micro-ecology balance</div>
+        </div>
+        <nav class="mt-6 flex-1 px-2 space-y-2">
+            <div class="nav-item active rounded" onclick="switchTab('lab', this)">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-flask text-lg w-6 text-center"></i>
+                    <span class="hidden md:block" data-i18n="nav_lab">配方開發實驗室</span>
+                </div>
+            </div>
+            <div class="nav-item rounded" onclick="switchTab('market', this)">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-chart-line text-lg w-6 text-center"></i>
+                    <span class="hidden md:block" data-i18n="nav_market">市場趨勢洞察</span>
+                </div>
+            </div>
+            <div class="nav-item rounded" onclick="switchTab('products', this)">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-database text-lg w-6 text-center"></i>
+                    <span class="hidden md:block" data-i18n="nav_assets">企業配方資產</span>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 overflow-y-auto bg-yiyu-bg p-4 md:p-8 relative" id="mainContent">
+        
+        <!-- Top Bar -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 sticky top-0 bg-yiyu-bg/95 backdrop-blur z-10 py-3 border-b border-gray-200/50">
+            <div>
+                <h1 id="pageTitle" class="text-2xl font-bold text-yiyu-base tracking-tight">配方開發實驗室</h1>
+                <p id="pageDesc" class="text-gray-500 text-xs md:text-sm mt-1">微生態平衡導向的 AI 面膜企劃引擎</p>
+            </div>
+            <div class="flex gap-3 items-center flex-wrap justify-end">
+                <button class="pdf-btn" onclick="printReport()">
+                    <i class="fas fa-file-pdf"></i>
+                    <span data-i18n="btn_export_pdf">匯出 PDF</span>
+                </button>
+                
+                <div class="flex gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                    <div class="flex items-center gap-2 px-3 border-r border-gray-200">
+                        <i class="fas fa-globe text-yiyu-primary"></i>
+                        <select id="langSelect" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="changeLanguage(this.value)">
+                            <option value="zh-TW">繁體中文</option>
+                            <option value="en-US">English</option>
+                            <option value="ja-JP">日本語</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 px-3">
+                        <i class="fas fa-coins text-yellow-600"></i>
+                        <select id="currency" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="updateSystemCurrency()">
+                            <option value="TWD">TWD ($)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="USD">USD ($)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAB TAB -->
+        <div id="tab-lab" class="animate-fade-in space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-3 space-y-6">
+                    <div class="card border-l-4 border-yiyu-primary">
+                        <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100">0. 銷售渠道與定價</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">選擇銷售渠道</label>
+                                <select id="salesChannel" class="w-full p-2 bg-gray-50 border border-gray-200 rounded text-sm" onchange="recalc()">
+                                    <option value="own">自有品牌官網 (DTC)</option>
+                                    <option value="retail">實體通路/上架 (Retail)</option>
+                                    <option value="distributor">經銷代理 (Distributor)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-1">單片預計售價 (末端)</label>
+                                <div class="flex items-center">
+                                    <span class="bg-gray-100 p-2 rounded-l text-gray-500 text-sm" id="currencySymbol">NT$</span>
+                                    <input type="number" id="retailPrice" value="50" class="w-full p-2 border border-gray-200 rounded-r text-sm text-right" onchange="recalc()">
+                                </div>
+                            </div>
+                            <div class="bg-gray-100 p-3 rounded text-xs text-gray-600">
+                                目標成本上限 (COGS): <br>
+                                <span id="targetCostDisplay" class="text-lg font-bold text-yiyu-primary">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100">1. 核心訴求 Claims</h3>
+                        <div class="flex flex-wrap gap-2" id="claimsContainer"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100">2. 膜布載體 Fabric</h3>
+                        <select id="fabricSelect" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm mb-2" onchange="recalc()"></select>
+                        <p id="fabricDesc" class="text-xs text-gray-500 italic mt-1 pl-1">...</p>
+                    </div>
+
+                    <div class="card bg-gradient-to-br from-[#E8F3EB] to-[#F5F9F6] border border-[#CDE5D6] shadow-none">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-6 h-6 rounded-full bg-yiyu-primary flex items-center justify-center text-white text-xs"><i class="fas fa-robot"></i></div>
+                            <h3 class="font-bold text-yiyu-base text-sm">AI 智囊</h3>
+                        </div>
+                        <div id="aiSuggestion" class="text-xs text-gray-700 leading-relaxed min-h-[40px] font-medium">等待輸入核心訴求...</div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5">
+                    <div class="card h-full flex flex-col border-t-4 border-t-yiyu-base">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-lg text-yiyu-base">配方架構</h3>
+                            <span class="text-xs font-mono bg-yiyu-secondary/20 text-yiyu-base px-2 py-1 rounded font-bold">Total: <span id="totalPct">0</span>%</span>
+                        </div>
+                        
+                        <div class="flex gap-2 mb-4">
+                            <select id="ingredientSelector" class="flex-1 p-2 bg-gray-50 border border-gray-200 rounded text-sm">
+                                <option value="">+ 選擇活性成分...</option>
+                            </select>
+                            <button onclick="addIngredient()" class="bg-yiyu-primary hover:bg-yiyu-base text-white w-10 h-10 rounded shadow-md"><i class="fas fa-plus"></i></button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto bg-gray-50 rounded border border-gray-100 p-1">
+                            <table class="w-full text-sm">
+                                <thead class="text-xs text-gray-400 border-b border-gray-200 bg-gray-100/50 sticky top-0">
+                                    <tr><th class="p-2 text-left pl-3">INCI Name</th><th class="p-2 text-right w-16">%</th><th class="p-2 text-right w-20">Cost</th><th class="p-2 w-8"></th></tr>
+                                </thead>
+                                <tbody id="formulaBody">
+                                    <tr class="bg-blue-50/30">
+                                        <td class="p-3 font-medium text-yiyu-base"><i class="fas fa-tint text-blue-300 mr-2"></i>WATER</td>
+                                        <td class="p-3 text-right text-gray-600" id="waterPct">100.0</td>
+                                        <td class="p-3 text-right text-gray-400">-</td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 p-3 rounded-lg">
+                            <div class="flex justify-between items-end mb-2">
+                                <div class="text-xs text-gray-500 font-medium uppercase">實際成本<br>(Per Sheet)</div>
+                                <div class="text-3xl font-bold text-yiyu-primary" id="finalCost">NT$0</div>
+                            </div>
+                            <div id="costWarning" class="hidden bg-red-50 border border-red-200 text-red-600 p-2 rounded text-xs flex items-center gap-2">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>警告：超出目標成本 <span id="overCostAmount" class="font-bold"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-4">
+                    <div class="card h-full flex flex-col">
+                        <h3 class="font-bold text-yiyu-base mb-2 text-xs uppercase tracking-widest">3. 效能預測 Efficacy</h3>
+                        <div class="chart-container flex-1">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MARKET TAB -->
+        <div id="tab-market" class="hidden animate-fade-in space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="card lg:col-span-2">
+                    <h3 class="font-bold text-yiyu-base mb-4">市場定位象限圖</h3>
+                    <div class="chart-container h-80"><canvas id="marketMapChart"></canvas></div>
+                </div>
+                <div class="card">
+                    <h3 class="font-bold text-yiyu-base mb-4">AI 輿情洞察</h3>
+                    <div class="space-y-4">
+                        <div class="bg-white p-3 rounded-lg shadow-sm border">
+                            <div class="text-xs text-gray-400 mb-2 font-bold">消費者熱議關鍵字</div>
+                            <div class="flex flex-wrap gap-2" id="marketKeywords"><span class="text-xs text-gray-400">請先選擇核心訴求...</span></div>
+                        </div>
+                        <div class="bg-white p-3 rounded-lg shadow-sm border">
+                            <div class="text-xs text-gray-400 mb-2 font-bold">市場缺口</div>
+                            <p class="text-xs text-gray-600" id="marketGap">系統正等待配方參數輸入...</p>
+                        </div>
+                        <div class="bg-yiyu-primary/5 p-3 rounded-lg border border-yiyu-primary/20">
+                            <div class="text-xs text-yiyu-primary font-bold mb-1">建議定價策略</div>
+                            <p class="text-xs text-gray-700" id="marketStrategy">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div id="tab-products" class="hidden animate-fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="productGrid"></div>
+        </div>
+
+        <!-- ==================== PRINT REPORT ==================== -->
+        <div id="printReport">
+            <div class="print-page">
+                <div class="print-header">
+                    <div>
+                        <h1>AMS BioteQ</h1>
+                        <div class="tagline">the art of micro-ecology balance</div>
+                    </div>
+                    <div class="page-title" id="printPageTitle1">配方開發實驗室報告</div>
+                </div>
+                
+                <div class="print-section-title" id="printSectionTitle1">配方企劃概要</div>
+                
+                <div class="print-grid-2" style="margin-bottom: 20px;">
+                    <div class="print-card">
+                        <h3>銷售渠道與定價</h3>
+                        <p style="font-size: 11px; color: #444; margin: 5px 0;"><strong>渠道：</strong><span id="printChannel">--</span></p>
+                        <p style="font-size: 11px; color: #444; margin: 5px 0;"><strong>建議售價：</strong><span id="printRetailPrice">--</span></p>
+                        <p style="font-size: 11px; color: #444; margin: 5px 0;"><strong>目標成本：</strong><span id="printTargetCost">--</span></p>
+                    </div>
+                    <div class="print-card">
+                        <h3>核心訴求 Claims</h3>
+                        <div id="printClaims" style="margin-top: 10px;"></div>
+                    </div>
+                </div>
+                
+                <div class="print-card" style="margin-bottom: 20px;">
+                    <h3>膜布載體 Fabric</h3>
+                    <p style="font-size: 12px; color: #2D4A3E; font-weight: 600;" id="printFabric">--</p>
+                    <p style="font-size: 10px; color: #888; font-style: italic;" id="printFabricDesc">--</p>
+                </div>
+                
+                <div class="print-card" style="margin-bottom: 20px;">
+                    <h3>配方架構 Formula Structure</h3>
+                    <table class="print-table">
+                        <thead><tr><th>INCI Name</th><th style="text-align: right; width: 80px;">%</th><th style="text-align: right; width: 100px;">Cost</th></tr></thead>
+                        <tbody id="printFormulaBody"></tbody>
+                    </table>
+                    <div style="margin-top: 15px; text-align: right; padding-top: 10px; border-top: 2px solid #5F8D75;">
+                        <span style="font-size: 11px; color: #666;">實際成本 (Per Sheet)：</span>
+                        <span class="print-cost" id="printFinalCost">--</span>
+                    </div>
+                </div>
+                
+                <div class="print-highlight">
+                    <div style="font-size: 11px; font-weight: bold; color: #2D4A3E; margin-bottom: 8px;">🤖 AI 智囊建議</div>
+                    <p style="font-size: 11px; color: #444; line-height: 1.6;" id="printAiSuggestion">--</p>
+                </div>
+                
+                <div class="print-footer">
+                    <span>felixtsai@amsbioteq.com</span>
+                    <span id="printDate1">--</span>
+                </div>
+            </div>
+            
+            <div class="print-page">
+                <div class="print-header">
+                    <div>
+                        <h1>AMS BioteQ</h1>
+                        <div class="tagline">the art of micro-ecology balance</div>
+                    </div>
+                    <div class="page-title" id="printPageTitle2">企業配方資產</div>
+                </div>
+                
+                <div class="print-section-title" id="printSectionTitle2">已上市產品線</div>
+                
+                <div class="print-grid-3" id="printProductGrid"></div>
+                
+                <div class="print-footer">
+                    <span>felixtsai@amsbioteq.com</span>
+                    <span id="printDate2">--</span>
+                </div>
+            </div>
+        </div>
+    </div> 
+
+    <script>
+        const translations = {
+            'zh-TW': { claims: { oil: "控油平衡", moist: "高效保濕", white: "透亮煥白", aging: "緊緻撫紋", repair: "屏障修護" }, radar_labels: ['保濕', '美白', '抗老', '修護', '控油'], print_page_title1: "配方開發實驗室報告", print_page_title2: "企業配方資產", print_section1: "配方企劃概要", print_section2: "已上市產品線", ai_waiting: "等待輸入核心訴求...", ai_prefix: "AI 推薦成分: ", channel: { own: "自有品牌官網 (DTC)", retail: "實體通路/上架 (Retail)", distributor: "經銷代理 (Distributor)" } },
+            'en-US': { claims: { oil: "Oil Control", moist: "Hydration", white: "Brightening", aging: "Anti-Aging", repair: "Repairing" }, radar_labels: ['Moist', 'White', 'Anti-Aging', 'Repair', 'Oil Ctrl'], print_page_title1: "Formula Lab Report", print_page_title2: "Product Assets", print_section1: "Formula Planning Overview", print_section2: "Launched Product Line", ai_waiting: "Waiting for input...", ai_prefix: "AI Suggests: ", channel: { own: "DTC (Official Site)", retail: "Retail Stores", distributor: "Distributors" } },
+            'ja-JP': { claims: { oil: "皮脂ケア", moist: "高保湿", white: "美白・透明感", aging: "エイジングケア", repair: "バリア修復" }, radar_labels: ['保湿', '美白', 'エイジング', '修復', '皮脂'], print_page_title1: "処方ラボレポート", print_page_title2: "製品資産", print_section1: "処方企画概要", print_section2: "発売済み製品ライン", ai_waiting: "訴求を選択してください...", ai_prefix: "AI 推奨成分: ", channel: { own: "自社EC (DTC)", retail: "実店舗 (Retail)", distributor: "代理店 (Distributor)" } }
+        };
+
+        let currentLang = 'zh-TW';
+        const exchangeRates = { 'TWD': { rate: 1, symbol: 'NT$', unit: 'TWD' }, 'JPY': { rate: 4.5, symbol: '¥', unit: 'JPY' }, 'USD': { rate: 0.031, symbol: '$', unit: 'USD' } };
+        let currentCurrency = 'TWD';
+        let formula = [];
+        let activeClaims = [];
+        let radarChart, marketMapChart;
+
+        const fabricsDB = [
+            { id: "veocel", cost: 3.0, stats: { moist: 5, white: 1, aging: 0, repair: 2, oil: 0 }, name: { "zh-TW": "水凝絲面膜 (VEOCEL)", "en-US": "Hydra Silk (VEOCEL)", "ja-JP": "ハイドラシルク" }, desc: { "zh-TW": "8um 極薄，高載液量，果凍般膚感。", "en-US": "8um ultra-thin, jelly-like texture.", "ja-JP": "8um極薄、ゼリーのような質感。" } },
+            { id: "plant", cost: 1.5, stats: { moist: 3, white: 0, aging: 0, repair: 1, oil: 0 }, name: { "zh-TW": "超柔感面膜 (Plant Fiber)", "en-US": "Soft Touch (Plant Fiber)", "ja-JP": "ソフトタッチ" }, desc: { "zh-TW": "高透氣、高柔軟度，親民入門款。", "en-US": "High breathability, entry-level.", "ja-JP": "高通気性、エントリーモデル。" } },
+            { id: "tencel", cost: 2.0, stats: { moist: 4, white: 1, aging: 0, repair: 1, oil: 0 }, name: { "zh-TW": "輕透絲面膜 (Tencel)", "en-US": "Lite Silk (Tencel)", "ja-JP": "ライトシルク" }, desc: { "zh-TW": "堅韌絲滑，宛如第二層肌膚。", "en-US": "Strong & silky, second-skin feel.", "ja-JP": "強靭で滑らか。" } },
+            { id: "hydrogel", cost: 12.0, stats: { moist: 5, white: 2, aging: 5, repair: 4, oil: 0 }, name: { "zh-TW": "微導凝膠膜 (Hydrogel)", "en-US": "Hydrogel Mask", "ja-JP": "ハイドロゲル" }, desc: { "zh-TW": "高單價，深層導入，適合高階抗老產品。", "en-US": "Premium, deep penetration.", "ja-JP": "高単価、深層浸透。" } }
+        ];
+
+        const ingredients = [
+            { name: "Butylene Glycol", cost: 120, stats: { moist: 2, white: 0, aging: 0, repair: 0, oil: 0 }, tags:['all'] },
+            { name: "Niacinamide (B3)", cost: 850, stats: { moist: 1, white: 5, aging: 2, repair: 3, oil: 3 }, tags:['white','oil','aging'] },
+            { name: "PDRN (DNA-Na)", cost: 15000, stats: { moist: 2, white: 0, aging: 5, repair: 5, oil: 0 }, tags:['aging','repair'] },
+            { name: "Centella Asiatica", cost: 1800, stats: { moist: 1, white: 0, aging: 0, repair: 5, oil: 1 }, tags:['repair'] },
+            { name: "Vit C (Ethyl Ascorbic)", cost: 4500, stats: { moist: 0, white: 5, aging: 3, repair: 0, oil: 0 }, tags:['white'] },
+            { name: "Ceramide Complex", cost: 6500, stats: { moist: 4, white: 0, aging: 2, repair: 5, oil: 0 }, tags:['repair','moist'] },
+            { name: "Sodium Hyaluronate", cost: 3000, stats: { moist: 5, white: 0, aging: 1, repair: 1, oil: 0 }, tags:['moist'] },
+            { name: "Hexapeptide-8", cost: 12000, stats: { moist: 1, white: 0, aging: 5, repair: 0, oil: 0 }, tags:['aging'] }
+        ];
+
+        const productsDB = [
+            { name: { "zh-TW": "淨光平衡面膜", "en-US": "Pure Balance Mask", "ja-JP": "ピュアバランスマスク" }, key: "Azelaic Acid + Tea Tree", desc: { "zh-TW": "微生態控油平衡系統", "en-US": "Micro-ecology balance system", "ja-JP": "美肌菌バランスシステム" }, img: "淨光.png" },
+            { name: { "zh-TW": "恆光逆齡面膜", "en-US": "Ageless Glow Mask", "ja-JP": "エイジレスグロウマスク" }, key: "PDRN + Peptides", desc: { "zh-TW": "深層賦活緊緻配方", "en-US": "Deep revitalizing formula", "ja-JP": "深層活性化処方" }, img: "恆光.png" },
+            { name: { "zh-TW": "柔光修護面膜", "en-US": "Soft Repair Mask", "ja-JP": "ソフトリペアマスク" }, key: "CICA + Ceramide", desc: { "zh-TW": "舒緩修護屏障強韌", "en-US": "Soothing barrier repair", "ja-JP": "鎮静バリア修復" }, img: "柔光.png" },
+            { name: { "zh-TW": "極光煥白面膜", "en-US": "Aurora White Mask", "ja-JP": "オーロラホワイトマスク" }, key: "Vit C + Glutathione", desc: { "zh-TW": "肌膚透亮光澤對策", "en-US": "Radiance solution", "ja-JP": "透明感対策" }, img: "極光.png" },
+            { name: { "zh-TW": "勻光整肌面膜", "en-US": "Radiance Mask", "ja-JP": "ラディアンスマスク" }, key: "Collagen + HA", desc: { "zh-TW": "基礎滋潤柔嫩", "en-US": "Essential hydration", "ja-JP": "基礎保湿" }, img: "勻光.png" }
+        ];
+
+        function printReport() {
+            updatePrintContent();
+            window.print();
+        }
+        
+        function updatePrintContent() {
+            const t = translations[currentLang];
+            const rate = exchangeRates[currentCurrency];
+            const fabIdx = document.getElementById('fabricSelect').value || 0;
+            const fab = fabricsDB[fabIdx];
+            
+            document.getElementById('printPageTitle1').innerText = t.print_page_title1;
+            document.getElementById('printPageTitle2').innerText = t.print_page_title2;
+            document.getElementById('printSectionTitle1').innerText = t.print_section1;
+            document.getElementById('printSectionTitle2').innerText = t.print_section2;
+            
+            const channel = document.getElementById('salesChannel').value;
+            document.getElementById('printChannel').innerText = t.channel[channel];
+            document.getElementById('printRetailPrice').innerText = document.getElementById('retailPrice').value + ' ' + rate.unit;
+            document.getElementById('printTargetCost').innerText = document.getElementById('targetCostDisplay').innerText;
+            
+            document.getElementById('printClaims').innerHTML = activeClaims.length > 0 
+                ? activeClaims.map(c => `<span class="print-tag">${t.claims[c]}</span>`).join('')
+                : `<span style="color: #999; font-size: 11px;">尚未選擇</span>`;
+            
+            document.getElementById('printFabric').innerText = fab.name[currentLang];
+            document.getElementById('printFabricDesc').innerText = fab.desc[currentLang];
+            
+            let formulaHtml = `<tr><td>WATER (Aqua)</td><td style="text-align: right;">${document.getElementById('waterPct').innerText}%</td><td style="text-align: right;">-</td></tr>`;
+            formula.forEach(item => {
+                formulaHtml += `<tr><td>${item.name}</td><td style="text-align: right;">${item.pct.toFixed(1)}%</td><td style="text-align: right;">${rate.symbol}${(item.cost * item.pct / 100 * 0.025 * rate.rate).toFixed(2)}</td></tr>`;
+            });
+            formulaHtml += `<tr style="background: #E8F3EB !important;"><td><strong>膜布 Fabric: ${fab.name[currentLang]}</strong></td><td style="text-align: right;">-</td><td style="text-align: right;">${rate.symbol}${(fab.cost * rate.rate).toFixed(2)}</td></tr>`;
+            document.getElementById('printFormulaBody').innerHTML = formulaHtml;
+            
+            document.getElementById('printFinalCost').innerText = document.getElementById('finalCost').innerText;
+            document.getElementById('printAiSuggestion').innerText = document.getElementById('aiSuggestion').innerText;
+            
+            const dateStr = new Date().toLocaleDateString(currentLang === 'zh-TW' ? 'zh-TW' : currentLang === 'ja-JP' ? 'ja-JP' : 'en-US');
+            document.getElementById('printDate1').innerText = dateStr;
+            document.getElementById('printDate2').innerText = dateStr;
+            
+            document.getElementById('printProductGrid').innerHTML = productsDB.map(p => `
+                <div class="print-product">
+                    <img src="${p.img}" alt="${p.name[currentLang]}">
+                    <h4>${p.name[currentLang]}</h4>
+                    <p>${p.desc[currentLang]}</p>
+                    <div class="key">Key: ${p.key}</div>
+                </div>`).join('');
+        }
+
+        window.onload = function() {
+            initCharts();
+            populateSelect();
+            changeLanguage('zh-TW');
+            document.getElementById('fabricSelect').value = "0"; 
+            recalc();
+        };
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            populateFabricSelect();
+            renderClaims();
+            renderProducts();
+            updateAiSuggestion();
+            updateChartsLang();
+            recalc();
+        }
+
+        function switchTab(id, el) {
+            document.querySelectorAll('[id^="tab-"]').forEach(d => d.classList.add('hidden'));
+            document.getElementById(`tab-${id}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            if (id === 'market' && marketMapChart) setTimeout(() => { marketMapChart.resize(); marketMapChart.update(); }, 50);
+        }
+
+        function populateFabricSelect() {
+            const sel = document.getElementById('fabricSelect');
+            const currentVal = sel.value || "0";
+            sel.innerHTML = fabricsDB.map((f, i) => `<option value="${i}">${f.name[currentLang]}</option>`).join('');
+            sel.value = currentVal;
+            document.getElementById('fabricDesc').innerText = fabricsDB[sel.value || 0].desc[currentLang];
+        }
+
+        function renderClaims() {
+            const t = translations[currentLang];
+            document.getElementById('claimsContainer').innerHTML = ['oil', 'moist', 'white', 'aging', 'repair'].map(k => 
+                `<span class="tag-select ${activeClaims.includes(k) ? 'selected' : ''}" onclick="toggleClaim(this, '${k}')">${t.claims[k]}</span>`
+            ).join('');
+        }
+
+        function renderProducts() {
+            document.getElementById('productGrid').innerHTML = productsDB.map(p => `
+                <div class="card border-t-4 border-yiyu-primary">
+                    <img src="${p.img}" alt="${p.name[currentLang]}" class="w-full h-48 object-cover rounded-md mt-3 mb-2">
+                    <h3 class="font-bold text-yiyu-base text-lg">${p.name[currentLang]}</h3>
+                    <p class="text-xs text-gray-500 mt-2">${p.desc[currentLang]}</p>
+                    <p class="mt-4 pt-4 border-t text-xs text-gray-400">Key: ${p.key}</p>
+                </div>`).join('');
+        }
+
+        function toggleClaim(el, claim) {
+            el.classList.toggle('selected');
+            if(activeClaims.includes(claim)) activeClaims = activeClaims.filter(c=>c!==claim);
+            else activeClaims.push(claim);
+            updateAiSuggestion();
+        }
+
+        function updateAiSuggestion() {
+            const t = translations[currentLang];
+            const box = document.getElementById('aiSuggestion');
+            if(activeClaims.length === 0) { box.innerText = t.ai_waiting; return; }
+            let hits = ingredients.filter(ing => activeClaims.some(c => ing.tags.includes(c)));
+            box.innerHTML = `${t.ai_prefix}<span class="font-bold text-yiyu-primary">${[...new Set(hits.map(h => h.name.split(' ')[0]))].join(', ')}</span>`;
+        }
+
+        function populateSelect() {
+            const sel = document.getElementById('ingredientSelector');
+            ingredients.forEach((ing, i) => sel.innerHTML += `<option value="${i}">${ing.name}</option>`);
+        }
+
+        function addIngredient() {
+            const idx = document.getElementById('ingredientSelector').value;
+            if(idx === "") return;
+            formula.push({...ingredients[idx], pct: 1.0}); 
+            renderFormula();
+            recalc();
+        }
+
+        function renderFormula() {
+            const tbody = document.getElementById('formulaBody');
+            let html = `<tr class="bg-yiyu-secondary/10"><td class="p-3 font-medium text-yiyu-base"><i class="fas fa-tint text-yiyu-secondary mr-2"></i>WATER</td><td class="p-3 text-right" id="waterPct">100.0</td><td class="p-3 text-right text-gray-400">-</td><td></td></tr>`;
+            formula.forEach((item, i) => {
+                html += `<tr class="border-b border-gray-50 hover:bg-gray-50">
+                    <td class="p-3 text-gray-700 font-medium">${item.name}</td>
+                    <td class="p-3 text-right"><input type="number" step="0.1" value="${item.pct}" onchange="formula[${i}].pct=parseFloat(this.value);recalc()" class="w-16 text-right border rounded p-1 bg-white"></td>
+                    <td class="p-3 text-right text-xs text-gray-500 cost-cell" data-base="${(item.cost*item.pct/100).toFixed(1)}">0</td>
+                    <td class="p-3 text-center"><button onclick="formula.splice(${i},1);renderFormula();recalc()" class="text-gray-300 hover:text-red-400"><i class="fas fa-times"></i></button></td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function recalc() {
+            const rate = exchangeRates[currentCurrency];
+            const fab = fabricsDB[document.getElementById('fabricSelect').value || 0];
+            let bulkCostKG = formula.reduce((s,i) => s+(i.cost*i.pct/100), 0);
+            let totalSheetCost = (bulkCostKG * 0.025) + fab.cost;
+            
+            let channel = document.getElementById('salesChannel').value;
+            let retailPrice = parseFloat(document.getElementById('retailPrice').value) || 0;
+            let marginRatio = channel === 'retail' ? 0.15 : channel === 'distributor' ? 0.20 : 0.3;
+            let targetCostTWD = (retailPrice / rate.rate) * marginRatio;
+
+            let totalPct = formula.reduce((s,i) => s+i.pct, 0);
+            document.getElementById('waterPct').innerText = Math.max(0, 100 - totalPct).toFixed(1);
+            document.getElementById('totalPct').innerText = (totalPct + Math.max(0, 100 - totalPct)).toFixed(1);
+            document.getElementById('fabricDesc').innerText = fab.desc[currentLang];
+            document.getElementById('finalCost').innerText = `${rate.symbol}${(totalSheetCost*rate.rate).toFixed(1)}`;
+            document.getElementById('targetCostDisplay').innerText = `${rate.symbol}${(targetCostTWD*rate.rate).toFixed(1)}`;
+            
+            document.querySelectorAll('.cost-cell').forEach(c => c.innerText = (parseFloat(c.dataset.base) * rate.rate).toFixed(1));
+
+            const diff = totalSheetCost - targetCostTWD;
+            const warningBox = document.getElementById('costWarning');
+            if(diff > 0) {
+                warningBox.classList.remove('hidden');
+                document.getElementById('overCostAmount').innerText = `+${rate.symbol}${(diff*rate.rate).toFixed(1)}`;
+                document.getElementById('finalCost').classList.add('text-red-600');
+            } else {
+                warningBox.classList.add('hidden');
+                document.getElementById('finalCost').classList.remove('text-red-600');
+            }
+            updateRadar();
+        }
+
+        function updateRadar() {
+            if (!radarChart) return;
+            let scores = { moist:0, white:0, aging:0, repair:0, oil:0 };
+            let fStats = fabricsDB[document.getElementById('fabricSelect').value || 0].stats;
+            for(let k in scores) scores[k] += fStats[k];
+            formula.forEach(i => { for(let k in scores) scores[k] += i.stats[k] * (i.pct>0?1:0); });
+            radarChart.data.datasets[0].data = Object.values(scores);
+            radarChart.update();
+        }
+
+        function updateSystemCurrency() {
+            currentCurrency = document.getElementById('currency').value;
+            document.getElementById('currencySymbol').innerText = exchangeRates[currentCurrency].symbol;
+            recalc();
+        }
+        
+        function updateChartsLang() {
+            const t = translations[currentLang];
+            if(radarChart) { radarChart.data.labels = t.radar_labels; radarChart.update(); }
+        }
+
+        function initCharts() {
+            radarChart = new Chart(document.getElementById('radarChart').getContext('2d'), {
+                type: 'radar',
+                data: { labels: ['保濕', '美白', '抗老', '修護', '控油'], datasets: [{ data: [0,0,0,0,0], backgroundColor: 'rgba(95, 141, 117, 0.2)', borderColor: '#5F8D75', borderWidth: 2, pointBackgroundColor: '#5F8D75' }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 12, ticks: { display: false }, pointLabels: { font: { size: 12, weight: 'bold' }, color: '#5F8D75' } } }, plugins: { legend: { display: false } } }
+            });
+
+            marketMapChart = new Chart(document.getElementById('marketMapChart').getContext('2d'), {
+                type: 'bubble',
+                data: { datasets: [{ data: [{x:25,y:85,r:8},{x:28,y:95,r:8},{x:60,y:75,r:8},{x:120,y:40,r:8}], backgroundColor: 'rgba(95, 141, 117, 0.6)', borderColor: '#2D4A3E' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: 'Price' } }, y: { title: { display: true, text: 'Volume' }, min: 0, max: 100 } } }
+            });
+        }
+    </script>
+</body>
+</html>
