@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Smart Mask Engine (AMS BioteQ)</title>
-    <!-- 引入 Chart.js -->
+    <title>AI Smart Mask Engine (AMS BioteQ Co., Ltd.)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- 引入 html2pdf.js 用於生成 PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- PDF Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -19,13 +17,13 @@
                 extend: {
                     colors: {
                         yiyu: {
-                            base: '#2D4A3E',    // AMS BioteQ 基調色 (深苔綠)
-                            primary: '#5F8D75', // 主色
-                            secondary: '#A3B18A', // 次要色
-                            accent: '#D0E1D4',   // 點綴色
-                            bg: '#F9F8F6',       // 全局背景
-                            text: '#2C3333',     // 主要文字
-                            danger: '#EF4444'    // 警示色
+                            base: '#2D4A3E',
+                            primary: '#5F8D75',
+                            secondary: '#A3B18A',
+                            accent: '#D0E1D4',
+                            bg: '#F9F8F6',
+                            text: '#2C3333',
+                            danger: '#EF4444'
                         }
                     },
                     fontFamily: {
@@ -42,8 +40,8 @@
         .logo-section { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .subtitle { font-family: 'Georgia', serif; font-style: italic; font-size: 0.7rem; color: #A3B18A; letter-spacing: 0.8px; margin-top: 6px; opacity: 0.9; }
         .nav-item { padding: 16px 20px; cursor: pointer; transition: all 0.3s ease; border-left: 4px solid transparent; color: #A3B18A; }
-        .nav-item.active { background: rgba(95, 141, 117, 0.15); border-left-color: #5F8D75; color: #fff; font-weight: 500; }
         .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(95, 141, 117, 0.15); border-left-color: #5F8D75; color: #fff; font-weight: 500; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(45, 74, 62, 0.04); padding: 24px; transition: transform 0.3s ease, box-shadow 0.3s ease; border: 1px solid rgba(163, 177, 138, 0.15); }
         .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(45, 74, 62, 0.08); border-color: rgba(95, 141, 117, 0.3); }
         .tag-select { cursor: pointer; border: 1px solid #A3B18A; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; color: #5F8D75; transition: 0.2s; background: white; }
@@ -55,108 +53,72 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #A3B18A; border-radius: 3px; }
-
-        /* [修正] PDF 容器樣式：確保在生成時是可見的，但位於最上層覆蓋畫面 */
-        #pdf-container {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            color: #2C3333;
-            background: white;
-            position: fixed; 
+        
+        /* PDF Export Button Style */
+        .pdf-btn {
+            background: linear-gradient(135deg, #2D4A3E 0%, #5F8D75 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .pdf-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(45, 74, 62, 0.3);
+        }
+        .pdf-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* PDF Export Loading Overlay */
+        .pdf-overlay {
+            position: fixed;
             top: 0;
             left: 0;
-            width: 794px; /* A4 寬度 */
-            z-index: 99999; /* 確保在最上層 */
-            visibility: hidden; /* 平常隱藏 */
-            overflow: visible;
-        }
-        
-        /* 當我們加上 .show-pdf 類別時，讓它顯示出來 */
-        #pdf-container.show-pdf {
-            visibility: visible;
-        }
-
-        .pdf-page {
             width: 100%;
-            min-height: 1123px; /* A4 高度，確保即使內容少也有高度 */
-            padding: 40px;
-            box-sizing: border-box;
-            border: 2px solid #2D4A3E; 
-            position: relative;
-            background: white;
-            margin-bottom: 0; /* PDF 輸出時不需要 margin */
-        }
-        .pdf-header {
+            height: 100%;
+            background: rgba(45, 74, 62, 0.9);
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            border-bottom: 2px solid #2D4A3E;
-            padding-bottom: 15px;
-            margin-bottom: 25px;
-        }
-        .pdf-footer {
-            margin-top: 30px;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-            text-align: center;
-            font-size: 10px;
-            color: #666;
-            position: absolute;
-            bottom: 40px;
-            left: 40px;
-            right: 40px;
-        }
-        .pdf-section-title {
-            background: #2D4A3E;
-            color: white;
-            padding: 5px 10px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            display: inline-block;
-        }
-        .pdf-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            margin-bottom: 20px;
-        }
-        .pdf-table th {
-            background: #f0f5f2;
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-            color: #2D4A3E;
-        }
-        .pdf-table td {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        /* 載入遮罩 */
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 100000;
-            display: none;
             justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: bold;
+            z-index: 9999;
         }
+        .pdf-overlay.hidden { display: none; }
+        .pdf-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #A3B18A;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-sm md:text-base">
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay"><i class="fas fa-spinner fa-spin mr-3"></i> Generating PDF...</div>
+    <!-- PDF Export Loading Overlay -->
+    <div id="pdfOverlay" class="pdf-overlay hidden">
+        <div class="pdf-spinner mb-4"></div>
+        <p class="text-white text-lg font-medium" id="pdfStatusText">正在生成 PDF...</p>
+        <p class="text-gray-300 text-sm mt-2" id="pdfProgressText">準備中...</p>
+    </div>
 
     <!-- Sidebar -->
     <div class="sidebar w-20 md:w-64 flex-shrink-0 flex flex-col shadow-2xl z-20">
         <div class="logo-section flex flex-col">
-            <!-- 公司 LOGO -->
-            <img src="logo.png" alt="AMS BioteQ" class="w-32 md:w-40 mb-2 object-contain h-auto">
-            <div class="subtitle">Innovation for Life</div>
+            <img src="logo.png" alt="AMS BioteQ Co., Ltd." class="w-32 md:w-40 mb-2 object-contain h-auto" id="mainLogo">
+            <div class="subtitle">the art of micro-ecology balance</div>
         </div>
         <nav class="mt-6 flex-1 px-2 space-y-2">
             <div class="nav-item active rounded" onclick="switchTab('lab', this)">
@@ -179,12 +141,12 @@
             </div>
         </nav>
         <div class="p-6 text-xs text-gray-400 opacity-60 hidden md:block border-t border-white/10">
-            AMS System V7.3<br>Module: Lab & Market
+            System V7.2 (Multi-Lang)<br>Module: Lab & Market
         </div>
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto bg-yiyu-bg p-4 md:p-8 relative">
+    <div class="flex-1 overflow-y-auto bg-yiyu-bg p-4 md:p-8 relative" id="mainContent">
         
         <!-- Top Bar -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 sticky top-0 bg-yiyu-bg/95 backdrop-blur z-10 py-3 border-b border-gray-200/50">
@@ -192,33 +154,32 @@
                 <h1 id="pageTitle" class="text-2xl font-bold text-yiyu-base tracking-tight" data-i18n="title_lab">配方開發實驗室</h1>
                 <p id="pageDesc" class="text-gray-500 text-xs md:text-sm mt-1" data-i18n="desc_lab">微生態平衡導向的 AI 面膜企劃引擎</p>
             </div>
-            <div class="flex gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-100 items-center">
-                
+            <div class="flex gap-3 items-center flex-wrap justify-end">
                 <!-- PDF Export Button -->
-                <button onclick="exportToPDF()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 text-xs md:text-sm transition-colors">
+                <button id="pdfExportBtn" class="pdf-btn" onclick="exportToPDF()">
                     <i class="fas fa-file-pdf"></i>
-                    <span>Export PDF</span>
+                    <span data-i18n="btn_export_pdf">匯出 PDF</span>
                 </button>
-
-                <div class="w-px h-6 bg-gray-200 mx-1"></div>
-
-                <!-- Language Switcher -->
-                <div class="flex items-center gap-2 px-3 border-r border-gray-200">
-                    <i class="fas fa-globe text-yiyu-primary"></i>
-                    <select id="langSelect" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="changeLanguage(this.value)">
-                        <option value="zh-TW">繁體中文</option>
-                        <option value="en-US">English</option>
-                        <option value="ja-JP">日本語</option>
-                    </select>
-                </div>
-                <!-- Currency Switcher -->
-                <div class="flex items-center gap-2 px-3">
-                    <i class="fas fa-coins text-yellow-600"></i>
-                    <select id="currency" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="updateSystemCurrency()">
-                        <option value="TWD">TWD ($)</option>
-                        <option value="JPY">JPY (¥)</option>
-                        <option value="USD">USD ($)</option>
-                    </select>
+                
+                <div class="flex gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                    <!-- Language Switcher -->
+                    <div class="flex items-center gap-2 px-3 border-r border-gray-200">
+                        <i class="fas fa-globe text-yiyu-primary"></i>
+                        <select id="langSelect" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="changeLanguage(this.value)">
+                            <option value="zh-TW">繁體中文</option>
+                            <option value="en-US">English</option>
+                            <option value="ja-JP">日本語</option>
+                        </select>
+                    </div>
+                    <!-- Currency Switcher -->
+                    <div class="flex items-center gap-2 px-3">
+                        <i class="fas fa-coins text-yellow-600"></i>
+                        <select id="currency" class="bg-transparent font-bold text-gray-600 outline-none cursor-pointer text-sm" onchange="updateSystemCurrency()">
+                            <option value="TWD">TWD ($)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="USD">USD ($)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -226,8 +187,11 @@
         <!-- LAB TAB -->
         <div id="tab-lab" class="animate-fade-in space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
                 <!-- Left Column (Controls) -->
                 <div class="lg:col-span-3 space-y-6">
+                    
+                    <!-- Sales Channel -->
                     <div class="card border-l-4 border-yiyu-primary">
                         <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100 flex justify-between">
                             <span data-i18n="sect_sales">0. 銷售渠道與定價</span>
@@ -256,29 +220,38 @@
                         </div>
                     </div>
 
+                    <!-- Claims -->
                     <div class="card">
                         <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100 flex justify-between">
                             <span data-i18n="sect_claims">1. 核心訴求 Claims</span>
                             <i class="fas fa-check-double text-yiyu-secondary"></i>
                         </h3>
-                        <div class="flex flex-wrap gap-2" id="claimsContainer"></div>
+                        <div class="flex flex-wrap gap-2" id="claimsContainer">
+                            <!-- JS Generated -->
+                        </div>
                     </div>
 
+                    <!-- Fabric -->
                     <div class="card">
                         <h3 class="font-bold text-yiyu-base mb-4 text-xs uppercase tracking-widest border-b pb-2 border-gray-100 flex justify-between">
                             <span data-i18n="sect_fabric">2. 膜布載體 Fabric</span>
                             <i class="fas fa-layer-group text-yiyu-secondary"></i>
                         </h3>
-                        <select id="fabricSelect" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm mb-2 outline-none focus:border-yiyu-primary focus:ring-1 focus:ring-yiyu-primary" onchange="recalc()"></select>
+                        <select id="fabricSelect" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm mb-2 outline-none focus:border-yiyu-primary focus:ring-1 focus:ring-yiyu-primary" onchange="recalc()">
+                            <!-- JS Generated -->
+                        </select>
                         <p id="fabricDesc" class="text-xs text-gray-500 italic mt-1 pl-1">...</p>
                     </div>
 
+                    <!-- AI Box -->
                     <div class="card bg-gradient-to-br from-[#E8F3EB] to-[#F5F9F6] border border-[#CDE5D6] shadow-none">
                         <div class="flex items-center gap-2 mb-3">
                             <div class="w-6 h-6 rounded-full bg-yiyu-primary flex items-center justify-center text-white text-xs shadow-sm"><i class="fas fa-robot"></i></div>
                             <h3 class="font-bold text-yiyu-base text-sm" data-i18n="sect_ai">AI 智囊</h3>
                         </div>
-                        <div id="aiSuggestion" class="text-xs text-gray-700 leading-relaxed min-h-[40px] font-medium" data-i18n="ai_waiting">等待輸入核心訴求...</div>
+                        <div id="aiSuggestion" class="text-xs text-gray-700 leading-relaxed min-h-[40px] font-medium" data-i18n="ai_waiting">
+                            等待輸入核心訴求...
+                        </div>
                     </div>
                 </div>
 
@@ -289,12 +262,15 @@
                             <h3 class="font-bold text-lg text-yiyu-base" data-i18n="sect_structure">配方架構</h3>
                             <span class="text-xs font-mono bg-yiyu-secondary/20 text-yiyu-base px-2 py-1 rounded font-bold">Total: <span id="totalPct">0</span>%</span>
                         </div>
+                        
                         <div class="flex gap-2 mb-4">
                             <select id="ingredientSelector" class="flex-1 p-2 bg-gray-50 border border-gray-200 rounded text-sm outline-none focus:border-yiyu-primary focus:ring-1 focus:ring-yiyu-primary">
                                 <option value="" data-i18n="opt_add_ing">+ 選擇活性成分...</option>
+                                <!-- JS Generated -->
                             </select>
                             <button onclick="addIngredient()" class="bg-yiyu-primary hover:bg-yiyu-base text-white w-10 h-10 rounded shadow-md transition-all flex items-center justify-center"><i class="fas fa-plus"></i></button>
                         </div>
+
                         <div class="flex-1 overflow-y-auto bg-gray-50 rounded border border-gray-100 p-1">
                             <table class="w-full text-sm">
                                 <thead class="text-xs text-gray-400 border-b border-gray-200 bg-gray-100/50 sticky top-0">
@@ -315,6 +291,7 @@
                                 </tbody>
                             </table>
                         </div>
+
                         <div class="mt-4 pt-4 border-t border-gray-100 bg-gray-50/50 p-3 rounded-lg">
                             <div class="flex justify-between items-end mb-2">
                                 <div class="text-xs text-gray-500 font-medium uppercase tracking-wide" data-i18n="lbl_actual_cost">Actual Cost<br>(Per Sheet)</div>
@@ -343,9 +320,9 @@
             </div>
         </div>
 
-        <!-- MARKET TAB (Hidden by default) -->
+        <!-- MARKET TAB -->
         <div id="tab-market" class="hidden animate-fade-in space-y-6">
-             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="card lg:col-span-2">
                     <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
                         <i class="fas fa-crosshairs text-yiyu-primary"></i> 
@@ -355,12 +332,14 @@
                         <canvas id="marketMapChart"></canvas>
                     </div>
                 </div>
+
                 <div class="card bg-gradient-to-b from-white to-gray-50 border border-gray-100 flex flex-col">
                     <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
                         <i class="fas fa-brain text-yiyu-primary"></i> 
                         <span data-i18n="sect_sentiment">AI 輿情洞察 (Sentiment)</span>
                     </h3>
                     <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+                        
                         <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                             <div class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider flex justify-between">
                                 <span data-i18n="lbl_keywords">消費者熱議關鍵字</span>
@@ -370,6 +349,7 @@
                                 <span class="text-xs text-gray-400" data-i18n="msg_select_claim">請先在實驗室選擇核心訴求...</span>
                             </div>
                         </div>
+                        
                         <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-100">
                             <div class="text-xs text-gray-400 mb-2 font-bold uppercase tracking-wider" data-i18n="lbl_gap">市場缺口 (GAP Analysis)</div>
                             <p class="text-xs text-gray-600 leading-relaxed" id="marketGap">
@@ -377,6 +357,7 @@
                                 <span data-i18n="msg_waiting_param">系統正等待配方參數輸入以進行分析...</span>
                             </p>
                         </div>
+
                         <div class="bg-yiyu-primary/5 p-3 rounded-lg border border-yiyu-primary/20">
                             <div class="text-xs text-yiyu-primary font-bold mb-1" data-i18n="lbl_strategy">建議定價策略</div>
                             <p class="text-xs text-gray-700 leading-relaxed" id="marketStrategy">--</p>
@@ -384,6 +365,7 @@
                     </div>
                 </div>
             </div>
+
             <div class="card">
                 <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
                     <i class="fas fa-list-ul text-yiyu-primary"></i> 
@@ -400,7 +382,9 @@
                                 <th class="p-3 text-right pr-4" data-i18n="col_retail_price">Est. Retail Price</th>
                             </tr>
                         </thead>
-                        <tbody id="competitorTable" class="divide-y divide-gray-100 bg-white"></tbody>
+                        <tbody id="competitorTable" class="divide-y divide-gray-100 bg-white">
+                            <!-- JS Generated -->
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -408,13 +392,12 @@
 
         <!-- PRODUCTS TAB -->
         <div id="tab-products" class="hidden animate-fade-in">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="productGrid"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="productGrid">
+                <!-- JS Generated -->
+            </div>
         </div>
 
-    </div>
-
-    <!-- [新增] 隱藏的 PDF 生成容器 -->
-    <div id="pdf-container"></div>
+    </div> 
 
     <script>
         // --- I18N CONFIGURATION ---
@@ -459,6 +442,13 @@
                 msg_waiting_param: "系統正等待配方參數輸入以進行分析...",
                 ai_waiting: "等待輸入核心訴求...",
                 ai_prefix: "AI 推薦成分: ",
+                btn_export_pdf: "匯出 PDF",
+                pdf_generating: "正在生成 PDF...",
+                pdf_page1: "正在擷取配方實驗室...",
+                pdf_page2: "正在擷取產品資產...",
+                pdf_done: "PDF 生成完成！",
+                pdf_title_lab: "Formula Lab Report",
+                pdf_title_products: "Product Assets",
                 claims: {
                     oil: "控油平衡", moist: "高效保濕", white: "透亮煥白", aging: "緊緻撫紋", repair: "屏障修護"
                 },
@@ -506,6 +496,13 @@
                 msg_waiting_param: "Waiting for formula parameters...",
                 ai_waiting: "Waiting for input...",
                 ai_prefix: "AI Suggests: ",
+                btn_export_pdf: "Export PDF",
+                pdf_generating: "Generating PDF...",
+                pdf_page1: "Capturing Formula Lab...",
+                pdf_page2: "Capturing Product Assets...",
+                pdf_done: "PDF Generated!",
+                pdf_title_lab: "Formula Lab Report",
+                pdf_title_products: "Product Assets",
                 claims: {
                     oil: "Oil Control", moist: "Hydration", white: "Brightening", aging: "Anti-Aging", repair: "Repairing"
                 },
@@ -553,6 +550,13 @@
                 msg_waiting_param: "分析パラメータの入力待ち...",
                 ai_waiting: "訴求を選択してください...",
                 ai_prefix: "AI 推奨成分: ",
+                btn_export_pdf: "PDF出力",
+                pdf_generating: "PDF生成中...",
+                pdf_page1: "処方ラボをキャプチャ中...",
+                pdf_page2: "製品資産をキャプチャ中...",
+                pdf_done: "PDF生成完了！",
+                pdf_title_lab: "Formula Lab Report",
+                pdf_title_products: "Product Assets",
                 claims: {
                     oil: "皮脂ケア", moist: "高保湿", white: "美白・透明感", aging: "エイジングケア", repair: "バリア修復"
                 },
@@ -578,6 +582,7 @@
         const C_PRIMARY = '#5F8D75';
         const C_BG_RADAR = 'rgba(95, 141, 117, 0.2)';
         
+        // Fabrics DB (Multi-lang desc)
         const fabricsDB = [
             { id: "veocel", cost: 3.0, stats: { moist: 5, white: 1, aging: 0, repair: 2, oil: 0 }, 
               name: { "zh-TW": "水凝絲面膜 (VEOCEL Lyocell)", "en-US": "Hydra Silk (VEOCEL Lyocell)", "ja-JP": "ハイドラシルク (VEOCEL)" },
@@ -602,6 +607,7 @@
               desc: { "zh-TW": "高單價，深層導入，適合高階抗老產品。", "en-US": "Premium, deep penetration, for anti-aging.", "ja-JP": "高単価、深層浸透、高級エイジングケア向け。" } }
         ];
 
+        // Insights DB (Multi-lang)
         const insightsDB = {
             'oil': {
                 focus: { "zh-TW": '控油/油痘肌', "en-US": 'Oil Control/Acne', "ja-JP": '皮脂ケア/ニキビ肌' },
@@ -695,6 +701,7 @@
             }
         };
 
+        // Ingredients (INCI mostly universal, tags internal)
         const ingredients = [
             { name: "Butylene Glycol", cost: 120, stats: { moist: 2, white: 0, aging: 0, repair: 0, oil: 0 }, tags:['all'] },
             { name: "Niacinamide (B3)", cost: 850, stats: { moist: 1, white: 5, aging: 2, repair: 3, oil: 3 }, tags:['white','oil','aging'] },
@@ -708,6 +715,7 @@
             { name: "Hexapeptide-8", cost: 12000, stats: { moist: 1, white: 0, aging: 5, repair: 0, oil: 0 }, tags:['aging'] }
         ];
 
+        // Products DB (Multi-lang)
         const productsDB = [
             { 
                 name: { "zh-TW": "淨光平衡面膜", "en-US": "Pure Balance Mask", "ja-JP": "ピュアバランスマスク" },
@@ -715,7 +723,7 @@
                 key: "Azelaic Acid + Tea Tree", 
                 color: "border-emerald-500", 
                 desc: { "zh-TW": "微生態控油平衡系統，接觸空氣自動產生細緻泡泡。", "en-US": "Micro-ecology balance. Self-foaming upon air contact.", "ja-JP": "美肌菌バランス。空気に触れると自動発泡する技術。" },
-                img: "https://placehold.co/400x300/2D4A3E/FFFFFF?text=Balance+Mask" 
+                img: "equli.jpg" 
             },
             { 
                 name: { "zh-TW": "恆光逆齡面膜", "en-US": "Ageless Glow Mask", "ja-JP": "エイジレスグロウマスク" },
@@ -723,7 +731,7 @@
                 key: "PDRN + Peptides", 
                 color: "border-purple-400", 
                 desc: { "zh-TW": "深層賦活緊緻配方，提升肌膚彈力與保水感。", "en-US": "Deep revitalizing formula. Boosts elasticity & moisture.", "ja-JP": "深層活性化処方。ハリと保水力を高める。" },
-                img: "https://placehold.co/400x300/805AD5/FFFFFF?text=Ageless+Mask"
+                img: "reproduce.jpg"
             },
             { 
                 name: { "zh-TW": "柔光修護面膜", "en-US": "Soft Repair Mask", "ja-JP": "ソフトリペアマスク" },
@@ -731,7 +739,7 @@
                 key: "CICA + Ceramide", 
                 color: "border-pink-400", 
                 desc: { "zh-TW": "舒緩修護屏障強韌，專為不穩定膚況設計。", "en-US": "Soothing barrier repair. For unstable skin conditions.", "ja-JP": "鎮静バリア修復。不安定な肌コンディション向け。" },
-                img: "https://placehold.co/400x300/F472B6/FFFFFF?text=Repair+Mask"
+                img: "smooth.jpg"
             },
             { 
                 name: { "zh-TW": "極光煥白面膜", "en-US": "Aurora White Mask", "ja-JP": "オーロラホワイトマスク" },
@@ -739,10 +747,19 @@
                 key: "Vit C + Glutathione", 
                 color: "border-gray-400", 
                 desc: { "zh-TW": "肌膚透亮光澤對策，改善膚色不均。", "en-US": "Radiance solution. Improves uneven skin tone.", "ja-JP": "透明感対策。肌の色ムラを改善。" },
-                img: "https://placehold.co/400x300/A0AEC0/FFFFFF?text=White+Mask"
+                img: "white.jpg"
+            },
+            { 
+                name: { "zh-TW": "勻光整肌面膜", "en-US": "Soft Repair Mask", "ja-JP": "ソフトリペアマスク" },
+                skin: { "zh-TW": "全膚質", "en-US": "All Skin", "ja-JP": "全膚肌" },
+                key: "Collagen + HA", 
+                color: "border-green-400",
+                desc: { "zh-TW": "基礎滋潤柔嫩，使肌膚呈現平滑細緻感。", "en-US": "Delivers essential hydration for soft, supple skin, revealing a smooth and refined texture.", "ja-JP": "肌の土台を潤いで満たし、キメの整ったなめらかな肌へ。" },
+                img: "radiance.jpg"
             }
         ];
 
+        // Competitors DB (Multi-lang feedback/category)
         const competitorsDB = [
             { b: "Anua (KR)", p: "Azelaic Acid 15", k: "Azelaic, CICA", price: 25, volume: 85, 
               cat: { "zh-TW": "控油調理", "en-US": "Oil Control", "ja-JP": "皮脂ケア" },
@@ -761,6 +778,196 @@
               fb: { "zh-TW": "非常溫和，適合所有膚質。", "en-US": "Very gentle, suitable for all skin types.", "ja-JP": "非常にマイルド、全肌質対応。" } }
         ];
 
+        // ==================== PDF EXPORT FUNCTION (FIXED VERSION) ====================
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const t = translations[currentLang];
+            const overlay = document.getElementById('pdfOverlay');
+            const statusText = document.getElementById('pdfStatusText');
+            const progressText = document.getElementById('pdfProgressText');
+            const btn = document.getElementById('pdfExportBtn');
+            
+            // Show loading overlay
+            overlay.classList.remove('hidden');
+            btn.disabled = true;
+            statusText.innerText = t.pdf_generating;
+            
+            // A4 dimensions in mm (portrait)
+            const pageWidth = 210;
+            const pageHeight = 297;
+            const margin = 12;
+            const headerHeight = 20;
+            const footerHeight = 12;
+            const contentStartY = headerHeight + 5;
+            const contentEndY = pageHeight - footerHeight - 5;
+            const usableHeight = contentEndY - contentStartY;
+            const usableWidth = pageWidth - (margin * 2);
+            
+            try {
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                // Helper function to add header and footer (using only English to avoid encoding issues)
+                function addHeaderFooter(doc, pageTitle, pageNum) {
+                    // Header background - dark green bar
+                    doc.setFillColor(45, 74, 62);
+                    doc.rect(0, 0, pageWidth, headerHeight, 'F');
+                    
+                    // Company name (use English to avoid encoding issues)
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('AMS BioteQ', margin, 13);
+                    
+                    // Tagline
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'italic');
+                    doc.setTextColor(163, 177, 138);
+                    doc.text('the art of micro-ecology balance', margin, 17);
+                    
+                    // Page title (English only)
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(208, 225, 212);
+                    doc.text(pageTitle, pageWidth - margin, 13, { align: 'right' });
+                    
+                    // Footer - decorative line
+                    doc.setDrawColor(163, 177, 138);
+                    doc.setLineWidth(0.3);
+                    doc.line(margin, pageHeight - footerHeight, pageWidth - margin, pageHeight - footerHeight);
+                    
+                    // Footer text - email
+                    doc.setTextColor(100, 100, 100);
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('felixtsai@amsbioteq.com', margin, pageHeight - 6);
+                    
+                    // Footer - date and page number
+                    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    doc.text(`${today}  |  Page ${pageNum}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+                    
+                    // Outer frame/border
+                    doc.setDrawColor(45, 74, 62);
+                    doc.setLineWidth(0.5);
+                    doc.rect(5, headerHeight + 2, pageWidth - 10, pageHeight - headerHeight - footerHeight - 4);
+                }
+                
+                // ===== PAGE 1: Formula Lab =====
+                progressText.innerText = t.pdf_page1;
+                
+                // Ensure lab tab is visible
+                const labTab = document.getElementById('tab-lab');
+                const marketTab = document.getElementById('tab-market');
+                const productsTab = document.getElementById('tab-products');
+                
+                labTab.classList.remove('hidden');
+                marketTab.classList.add('hidden');
+                productsTab.classList.add('hidden');
+                
+                // Wait for rendering
+                await new Promise(r => setTimeout(r, 500));
+                
+                // Capture lab content with higher quality
+                const labCanvas = await html2canvas(labTab, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#F9F8F6',
+                    logging: false,
+                    width: labTab.scrollWidth,
+                    height: labTab.scrollHeight
+                });
+                
+                // Add header/footer to page 1
+                addHeaderFooter(pdf, 'Formula Development Lab', 1);
+                
+                // Calculate image sizing to fit usable area while maintaining aspect ratio
+                const labImgWidth = labCanvas.width;
+                const labImgHeight = labCanvas.height;
+                const labAspectRatio = labImgWidth / labImgHeight;
+                
+                let finalWidth, finalHeight;
+                const usableAspectRatio = usableWidth / usableHeight;
+                
+                if (labAspectRatio > usableAspectRatio) {
+                    // Image is wider than usable area - fit to width
+                    finalWidth = usableWidth;
+                    finalHeight = usableWidth / labAspectRatio;
+                } else {
+                    // Image is taller than usable area - fit to height
+                    finalHeight = usableHeight;
+                    finalWidth = usableHeight * labAspectRatio;
+                }
+                
+                // Center the image horizontally
+                const xPos = margin + (usableWidth - finalWidth) / 2;
+                const yPos = contentStartY;
+                
+                const labImgData = labCanvas.toDataURL('image/png', 1.0);
+                pdf.addImage(labImgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
+                
+                // ===== PAGE 2: Products =====
+                progressText.innerText = t.pdf_page2;
+                pdf.addPage();
+                
+                // Show products tab
+                labTab.classList.add('hidden');
+                productsTab.classList.remove('hidden');
+                
+                await new Promise(r => setTimeout(r, 500));
+                
+                // Capture products content
+                const productsCanvas = await html2canvas(productsTab, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#F9F8F6',
+                    logging: false,
+                    width: productsTab.scrollWidth,
+                    height: productsTab.scrollHeight
+                });
+                
+                // Add header/footer to page 2
+                addHeaderFooter(pdf, 'Enterprise Product Assets', 2);
+                
+                // Calculate sizing for products page
+                const prodImgWidth = productsCanvas.width;
+                const prodImgHeight = productsCanvas.height;
+                const prodAspectRatio = prodImgWidth / prodImgHeight;
+                
+                if (prodAspectRatio > usableAspectRatio) {
+                    finalWidth = usableWidth;
+                    finalHeight = usableWidth / prodAspectRatio;
+                } else {
+                    finalHeight = usableHeight;
+                    finalWidth = usableHeight * prodAspectRatio;
+                }
+                
+                const xPos2 = margin + (usableWidth - finalWidth) / 2;
+                
+                const prodImgData = productsCanvas.toDataURL('image/png', 1.0);
+                pdf.addImage(prodImgData, 'PNG', xPos2, contentStartY, finalWidth, finalHeight);
+                
+                // Restore lab tab view
+                productsTab.classList.add('hidden');
+                labTab.classList.remove('hidden');
+                
+                // Save PDF
+                progressText.innerText = t.pdf_done;
+                const fileName = `AMS_BioteQ_Report_${new Date().toISOString().slice(0,10)}.pdf`;
+                pdf.save(fileName);
+                
+            } catch (error) {
+                console.error('PDF Export Error:', error);
+                alert('PDF generation failed: ' + error.message);
+            } finally {
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    btn.disabled = false;
+                }, 1000);
+            }
+        }
+
+        // 2. Init & Core Functions
         window.onload = function() {
             initCharts();
             populateSelect();
@@ -782,7 +989,7 @@
             const activeNav = document.querySelector('.nav-item.active');
             if(activeNav) {
                 const id = activeNav.getAttribute('onclick').match(/'([^']+)'/)[1];
-                 const titles = {
+                const titles = {
                     'lab': [t.title_lab, t.desc_lab], 
                     'market': [t.title_market, t.desc_market], 
                     'products': [t.title_assets, t.desc_assets]
@@ -826,6 +1033,7 @@
             }
         }
 
+        // 3. Dynamic Renders
         function populateFabricSelect() {
             const sel = document.getElementById('fabricSelect');
             const currentVal = sel.value || "0";
@@ -855,7 +1063,8 @@
                     </div>
                     <div class="mt-4 overflow-hidden rounded-lg shadow-sm border border-gray-100">
                         <img src="${p.img}" alt="Product" 
-                             class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-500">
+                             class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-500"
+                             onerror="this.style.display='none'">
                     </div>
                 </div>`).join('');
         }
@@ -873,6 +1082,7 @@
                 </tr>`).join('');
         }
 
+        // 4. Logic & Interactivity
         function toggleClaim(el, claim) {
             el.classList.toggle('selected');
             if(activeClaims.includes(claim)) activeClaims = activeClaims.filter(c=>c!==claim);
@@ -1110,121 +1320,6 @@
                     }
                 }
             });
-        }
-
-        // --- PDF Generation Logic ---
-        function exportToPDF() {
-            const container = document.getElementById('pdf-container');
-            const overlay = document.getElementById('loading-overlay');
-            const rate = exchangeRates[currentCurrency];
-            const finalCost = document.getElementById('finalCost').innerText;
-            const targetCost = document.getElementById('targetCostDisplay').innerText;
-            
-            // Show overlay & container
-            overlay.style.display = 'flex';
-            container.classList.add('show-pdf');
-
-            // 2. Capture Radar Chart as Image
-            const radarCanvas = document.getElementById('radarChart');
-            const radarImgData = radarCanvas.toDataURL("image/png");
-
-            // 3. Build Formula Table HTML
-            let formulaRows = formula.map(item => `
-                <tr>
-                    <td>${item.name}</td>
-                    <td style="text-align:right">${item.pct}%</td>
-                    <td style="text-align:right">${(item.cost*item.pct/100 * rate.rate).toFixed(1)}</td>
-                </tr>`).join('');
-            
-            // Add Water
-            const waterPct = document.getElementById('waterPct').innerText;
-            formulaRows = `<tr><td>WATER</td><td style="text-align:right">${waterPct}%</td><td style="text-align:right">-</td></tr>` + formulaRows;
-
-            // 4. Build Assets List HTML
-            const assetsList = productsDB.map(p => `
-                <div style="margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                    <div style="font-weight:bold; color: #2D4A3E;">${p.name[currentLang]}</div>
-                    <div style="font-size: 10px; color: #666;">${p.desc[currentLang]}</div>
-                    <div style="font-size: 10px; color: #5F8D75;">Key: ${p.key}</div>
-                </div>
-            `).join('');
-
-            // 5. Construct PDF Template (Page 1)
-            const htmlContent = `
-                <!-- Page 1: Formula Lab -->
-                <div class="pdf-page">
-                    <div class="pdf-header">
-                        <img src="logo.png" style="height:40px;">
-                        <div style="font-size: 12px; color: #666;">Formula Development Report</div>
-                    </div>
-                    
-                    <div class="pdf-section-title">FORMULA LAB</div>
-                    
-                    <div style="display:flex; justify-content:space-between;">
-                        <div style="width: 55%;">
-                            <table class="pdf-table">
-                                <thead><tr><th>Ingredient</th><th style="text-align:right">%</th><th style="text-align:right">Cost</th></tr></thead>
-                                <tbody>${formulaRows}</tbody>
-                            </table>
-                            <div style="background:#f9f9f9; padding:10px; border-left:4px solid #5F8D75;">
-                                <strong>Total Estimated Cost: ${finalCost} / sheet</strong><br>
-                                <span style="font-size:10px; color:#888;">Target Cost: ${targetCost}</span>
-                            </div>
-                        </div>
-                        <div style="width: 40%; text-align:center;">
-                            <div style="margin-bottom:5px; font-weight:bold; font-size:12px;">Efficacy Radar</div>
-                            <img src="${radarImgData}" style="width:100%;">
-                        </div>
-                    </div>
-
-                    <div class="pdf-footer">
-                        AMS BioteQ | Innovation for Life | Email: contact@amsbioteq.com
-                    </div>
-                </div>
-
-                <!-- Page 2: Assets -->
-                <div class="pdf-page">
-                    <div class="pdf-header">
-                        <img src="logo.png" style="height:40px;">
-                        <div style="font-size: 12px; color: #666;">Enterprise Assets</div>
-                    </div>
-                    
-                    <div class="pdf-section-title">EXISTING PRODUCTS</div>
-                    <div>${assetsList}</div>
-
-                    <div class="pdf-footer">
-                        AMS BioteQ | Innovation for Life | Email: contact@amsbioteq.com
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = htmlContent;
-
-            // 6. Generate PDF with Delay
-            const opt = {
-                margin:       0,
-                filename:     'AMS_BioteQ_Formula_Report.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { 
-                    scale: 2,
-                    useCORS: true,
-                    scrollY: 0
-                },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-
-            // Use a slight delay to ensure rendering, then hide the container again
-            setTimeout(() => {
-                html2pdf().set(opt).from(container).save().then(() => {
-                    container.classList.remove('show-pdf'); // Hide again
-                    container.innerHTML = ''; // Clean up
-                    overlay.style.display = 'none'; // Hide overlay
-                }).catch(err => {
-                    console.error(err);
-                    alert("PDF Generation Error");
-                    overlay.style.display = 'none';
-                });
-            }, 1000);
         }
     </script>
 </body>
