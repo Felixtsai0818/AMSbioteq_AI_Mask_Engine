@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <!-- Tailwind 設定 -->
     <script>
@@ -26,10 +25,6 @@
                             text: '#2C3333',     // 主要文字
                             danger: '#EF4444'    // 警示色
                         }
-                    },
-                    fontFamily: {
-                        sans: ['Helvetica Neue', 'Arial', 'sans-serif'],
-                        serif: ['Georgia', 'serif']
                     }
                 }
             }
@@ -66,63 +61,111 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #A3B18A; border-radius: 3px; }
 
-        /* PDF 匯出專用樣式 (修正空白頁問題) */
-        #pdf-container {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            color: #2C3333;
-            background: white;
-            position: fixed; 
-            top: 0;
-            left: -10000px; /* 移出畫面但保持渲染 */
-            width: 794px; /* A4 寬度 */
-            z-index: 99999;
-            visibility: visible;
-        }
-        
-        /* 當我們加上 .show-pdf 類別時，讓它顯示出來 (如果需要除錯) */
-        #pdf-container.show-pdf {
-            visibility: visible;
-        }
+        /* ------------------------------------------------------------------
+           PRINT STYLES (Adapted from Claude Opus Solution)
+           這段 CSS 會在按下「匯出 PDF」或 Ctrl+P 時生效
+           ------------------------------------------------------------------ */
+        #printReport { display: none; }
 
-        .pdf-page {
-            width: 100%;
-            min-height: 1123px;
-            padding: 40px;
-            box-sizing: border-box;
-            border: 2px solid #2D4A3E; 
-            position: relative;
-            background: white;
-            margin-bottom: 0;
-        }
-        .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2D4A3E; padding-bottom: 15px; margin-bottom: 25px; }
-        .pdf-footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #eee; text-align: center; font-size: 10px; color: #666; position: absolute; bottom: 40px; left: 40px; right: 40px; }
-        .pdf-section-title { background: #2D4A3E; color: white; padding: 5px 10px; font-size: 14px; font-weight: bold; margin-bottom: 15px; display: inline-block; }
-        .pdf-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
-        .pdf-table th { background: #f0f5f2; padding: 8px; text-align: left; border-bottom: 1px solid #ddd; color: #2D4A3E; }
-        .pdf-table td { padding: 8px; border-bottom: 1px solid #eee; }
-        .pdf-product { display: flex; align-items: start; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .pdf-product img { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
-        
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 100000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
+        @media print {
+            body, html { background: white !important; margin: 0; padding: 0; width: 100%; height: 100%; overflow: visible; }
+            
+            /* 隱藏網頁介面 */
+            .sidebar, .nav-item, button, select, input, .chart-container canvas, #loading-overlay, .sticky, #tab-lab, #tab-market, #tab-products, .w-px, .items-center > div { 
+                display: none !important; 
+            }
+            
+            /* 隱藏主內容容器的樣式，但不要隱藏它本身，因為 #printReport 在裡面 */
+            #mainContent { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                background: white !important;
+                position: static !important;
+                overflow: visible !important;
+            }
+
+            /* 顯示列印報表 */
+            #printReport { display: block !important; width: 100%; }
+
+            /* A4 紙張設定 */
+            @page { size: A4 portrait; margin: 0; }
+            
+            /* 報表排版 */
+            .print-page { 
+                width: 210mm; 
+                min-height: 297mm; 
+                padding: 15mm; 
+                margin: 0 auto; 
+                background: white; 
+                page-break-after: always; 
+                box-sizing: border-box; 
+                position: relative; 
+            }
+            .print-page:last-child { page-break-after: auto; }
+            
+            .print-header { 
+                background: #2D4A3E !important; 
+                color: white !important; 
+                padding: 15px 20px; 
+                margin: -15mm -15mm 20px -15mm; 
+                width: calc(100% + 30mm); 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .print-header h1 { font-size: 18px; font-weight: bold; margin: 0; }
+            .print-header .tagline { font-size: 10px; color: #A3B18A; font-style: italic; margin-top: 4px; }
+            .print-header .page-title { font-size: 12px; color: #D0E1D4; }
+            
+            .print-footer { 
+                position: absolute; 
+                bottom: 10mm; 
+                left: 15mm; 
+                right: 15mm; 
+                border-top: 1px solid #A3B18A; 
+                padding-top: 10px; 
+                font-size: 10px; 
+                color: #666; 
+                display: flex; 
+                justify-content: space-between; 
+            }
+            
+            .print-card { 
+                background: #fafafa !important; 
+                border: 1px solid #e0e0e0; 
+                border-radius: 8px; 
+                padding: 15px; 
+                margin-bottom: 15px; 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+            .print-card h3 { font-size: 12px; font-weight: bold; color: #2D4A3E; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; }
+            
+            .print-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+            .print-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+            
+            .print-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            .print-table th { background: #2D4A3E !important; color: white !important; padding: 8px; text-align: left; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .print-table td { padding: 8px; border-bottom: 1px solid #e0e0e0; }
+            
+            .print-highlight { background: #E8F3EB !important; border: 1px solid #CDE5D6; border-radius: 8px; padding: 15px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            .print-tag { display: inline-block; background: #5F8D75 !important; color: white !important; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-right: 4px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            
+            .print-cost { font-size: 24px; font-weight: bold; color: #5F8D75; }
+            .print-section-title { font-size: 16px; font-weight: bold; color: #2D4A3E; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #5F8D75; }
+
+            .print-product { background: white !important; border: 1px solid #eee; border-radius: 8px; padding: 10px; break-inside: avoid; }
+            .print-product img { width: 100%; height: 120px; object-fit: cover; margin-bottom: 8px; border-radius: 4px; border: 1px solid #eee; }
+            .print-product h4 { font-size: 12px; font-weight: bold; color: #2D4A3E; margin-bottom: 4px; }
+            .print-product p { font-size: 10px; color: #666; margin-bottom: 4px; line-height: 1.4; }
+            .print-product .key { font-size: 9px; color: #5F8D75; font-weight: bold; }
         }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-sm md:text-base">
-
-    <!-- Loading Overlay -->
-    <div id="loading-overlay">
-        <div class="text-3xl mb-4"><i class="fas fa-spinner fa-spin"></i></div>
-        <div class="text-lg font-bold">Generating PDF Report...</div>
-        <div class="text-sm opacity-80">Please wait a moment</div>
-    </div>
 
     <!-- Sidebar -->
     <div class="sidebar w-20 md:w-64 flex-shrink-0 flex flex-col shadow-2xl z-20">
@@ -151,12 +194,12 @@
             </div>
         </nav>
         <div class="p-6 text-xs text-gray-400 opacity-60 hidden md:block border-t border-white/10">
-            AMS System V7.5 (Stable)<br>Module: Lab & Market
+            AMS System V7.5 (Print)<br>Module: Lab & Market
         </div>
     </div>
 
     <!-- Main Content -->
-    <div class="flex-1 overflow-y-auto bg-yiyu-bg p-4 md:p-8 relative">
+    <div class="flex-1 overflow-y-auto bg-yiyu-bg p-4 md:p-8 relative" id="mainContent">
         
         <!-- Top Bar -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 sticky top-0 bg-yiyu-bg/95 backdrop-blur z-10 py-3 border-b border-gray-200/50">
@@ -165,7 +208,7 @@
                 <p id="pageDesc" class="text-gray-500 text-xs md:text-sm mt-1" data-i18n="desc_lab">微生態平衡導向的 AI 面膜企劃引擎</p>
             </div>
             <div class="flex gap-3 bg-white p-2 rounded-lg shadow-sm border border-gray-100 items-center">
-                <button onclick="exportToPDF()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 text-xs md:text-sm transition-colors cursor-pointer">
+                <button onclick="printReport()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 text-xs md:text-sm transition-colors cursor-pointer">
                     <i class="fas fa-file-pdf"></i>
                     <span data-i18n="btn_export_pdf">Export PDF</span>
                 </button>
@@ -346,7 +389,6 @@
                 </div>
             </div>
             
-            <!-- Competitor Table (Restored) -->
             <div class="card">
                 <h3 class="font-bold text-yiyu-base mb-4 flex items-center gap-2">
                     <i class="fas fa-list-ul text-yiyu-primary"></i> 
@@ -363,9 +405,7 @@
                                 <th class="p-3 text-right pr-4" data-i18n="col_retail_price">Est. Retail Price</th>
                             </tr>
                         </thead>
-                        <tbody id="competitorTable" class="divide-y divide-gray-100 bg-white">
-                            <!-- JS Generated -->
-                        </tbody>
+                        <tbody id="competitorTable" class="divide-y divide-gray-100 bg-white"></tbody>
                     </table>
                 </div>
             </div>
@@ -376,10 +416,91 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="productGrid"></div>
         </div>
 
-    </div>
+        <!-- PRINT REPORT TEMPLATE (Hidden unless printing) -->
+        <div id="printReport">
+            <!-- Page 1: Lab Report -->
+            <div class="print-page">
+                <div class="print-header">
+                    <div>
+                        <h1>AMS BioteQ</h1>
+                        <div class="tagline">the art of micro-ecology balance</div>
+                    </div>
+                    <div class="page-title" id="printPageTitle1">配方開發實驗室報告</div>
+                </div>
+                
+                <div class="print-section-title" id="printSectionTitle1">配方企劃概要</div>
+                
+                <div class="print-grid-2">
+                    <div class="print-card">
+                        <h3>銷售渠道與定價</h3>
+                        <p style="font-size: 11px; color: #444; margin: 5px 0;"><strong>渠道：</strong><span id="printChannel">--</span></p>
+                        <p style="font-size: 11px; color: #444; margin: 5px 0;"><strong>建議售價：</strong><span id="printRetailPrice">--</span></p>
+                        <p style="font-size: 11px; color: #444; margin: 5px 0;"><strong>目標成本：</strong><span id="printTargetCost">--</span></p>
+                    </div>
+                    <div class="print-card">
+                        <h3>核心訴求 Claims</h3>
+                        <div id="printClaims" style="margin-top: 10px;"></div>
+                    </div>
+                </div>
+                
+                <div class="print-card">
+                    <h3>膜布載體 Fabric</h3>
+                    <p style="font-size: 12px; color: #2D4A3E; font-weight: 600;" id="printFabric">--</p>
+                    <p style="font-size: 10px; color: #888; font-style: italic;" id="printFabricDesc">--</p>
+                </div>
+                
+                <div class="print-card">
+                    <h3>配方架構 Formula Structure</h3>
+                    <table class="print-table">
+                        <thead><tr><th>INCI Name</th><th style="text-align: right; width: 80px;">%</th><th style="text-align: right; width: 100px;">Cost</th></tr></thead>
+                        <tbody id="printFormulaBody"></tbody>
+                    </table>
+                    <div style="margin-top: 15px; text-align: right; padding-top: 10px; border-top: 2px solid #5F8D75;">
+                        <span style="font-size: 11px; color: #666;">實際成本 (Per Sheet)：</span>
+                        <span class="print-cost" id="printFinalCost">--</span>
+                    </div>
+                </div>
+                
+                <div class="print-highlight" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="width: 60%;">
+                        <div style="font-size: 11px; font-weight: bold; color: #2D4A3E; margin-bottom: 8px;">🤖 AI 智囊建議</div>
+                        <p style="font-size: 11px; color: #444; line-height: 1.6;" id="printAiSuggestion">--</p>
+                    </div>
+                    <div style="width: 35%; text-align: center;">
+                        <div style="font-size: 10px; color: #5F8D75; margin-bottom: 5px; font-weight: bold;">Efficacy Radar</div>
+                        <!-- Canvas Image will be inserted here -->
+                        <img id="printRadarImg" style="width: 100%; max-height: 150px; object-fit: contain;">
+                    </div>
+                </div>
+                
+                <div class="print-footer">
+                    <span>Email: felixtsai@amsbioteq.com</span>
+                    <span id="printDate1">--</span>
+                </div>
+            </div>
+            
+            <!-- Page 2: Assets -->
+            <div class="print-page">
+                <div class="print-header">
+                    <div>
+                        <h1>AMS BioteQ</h1>
+                        <div class="tagline">the art of micro-ecology balance</div>
+                    </div>
+                    <div class="page-title" id="printPageTitle2">企業配方資產</div>
+                </div>
+                
+                <div class="print-section-title" id="printSectionTitle2">已上市產品線</div>
+                
+                <div class="print-grid-3" id="printProductGrid"></div>
+                
+                <div class="print-footer">
+                    <span>Email: felixtsai@amsbioteq.com</span>
+                    <span id="printDate2">--</span>
+                </div>
+            </div>
+        </div>
 
-    <!-- PDF Template Container -->
-    <div id="pdf-container"></div>
+    </div>
 
     <script>
         // --- DATA & CONFIG ---
@@ -394,7 +515,7 @@
         let activeClaims = [];
         let radarChart, marketMapChart;
 
-        // 全域定義，確保連動邏輯可讀取
+        // 全域定義 Insights Data
         const insightsDB = {
             'oil': {
                 focus: { "zh-TW": '控油/油痘肌', "en-US": 'Oil Control/Acne', "ja-JP": '皮脂ケア/ニキビ肌' },
@@ -869,140 +990,70 @@
             });
         }
 
-        // --- PDF EXPORT ---
-        function exportToPDF() {
-            const container = document.getElementById('pdf-container');
-            const overlay = document.getElementById('loading-overlay');
+        // --- PRINT FUNCTION (Claude Opus Solution) ---
+        function printReport() {
+            updatePrintContent();
+            window.print();
+        }
+        
+        function updatePrintContent() {
             const t = translations[currentLang];
             const rate = exchangeRates[currentCurrency];
-            const finalCost = document.getElementById('finalCost').innerText;
-            const targetCost = document.getElementById('targetCostDisplay').innerText;
             const fabIdx = document.getElementById('fabricSelect').value || 0;
             const fab = fabricsDB[fabIdx];
+            
+            // Text Replacements
+            document.getElementById('printPageTitle1').innerText = t.print_page_title1;
+            document.getElementById('printPageTitle2').innerText = t.print_page_title2;
+            document.getElementById('printSectionTitle1').innerText = t.print_section1;
+            document.getElementById('printSectionTitle2').innerText = t.print_section2;
+            
+            // Sales Info
             const channelSelect = document.getElementById('salesChannel');
             const channelText = channelSelect.options[channelSelect.selectedIndex].text;
-
-            // Show UI
-            overlay.style.display = 'flex';
-            // container.classList.add('show-pdf'); // Use visibility: visible in css
-
-            // Capture Radar
+            document.getElementById('printChannel').innerText = channelText;
+            document.getElementById('printRetailPrice').innerText = document.getElementById('retailPrice').value + ' ' + rate.unit;
+            document.getElementById('printTargetCost').innerText = document.getElementById('targetCostDisplay').innerText;
+            
+            // Claims
+            document.getElementById('printClaims').innerHTML = activeClaims.length > 0 
+                ? activeClaims.map(c => `<span class="print-tag">${t.claims[c]}</span>`).join('')
+                : `<span style="color: #999; font-size: 11px;">尚未選擇</span>`;
+            
+            // Fabric
+            document.getElementById('printFabric').innerText = fab.name[currentLang];
+            document.getElementById('printFabricDesc').innerText = fab.desc[currentLang];
+            
+            // Formula Table
+            let formulaHtml = `<tr><td>WATER (Aqua)</td><td style="text-align: right;">${document.getElementById('waterPct').innerText}%</td><td style="text-align: right;">-</td></tr>`;
+            formula.forEach(item => {
+                formulaHtml += `<tr><td>${item.name}</td><td style="text-align: right;">${item.pct.toFixed(1)}%</td><td style="text-align: right;">${rate.symbol}${(item.cost * item.pct / 100 * 0.025 * rate.rate).toFixed(2)}</td></tr>`;
+            });
+            // Append Fabric Cost row
+            formulaHtml += `<tr style="background: #E8F3EB !important;"><td><strong>膜布 Fabric: ${fab.name[currentLang]}</strong></td><td style="text-align: right;">-</td><td style="text-align: right;">${rate.symbol}${(fab.cost * rate.rate).toFixed(2)}</td></tr>`;
+            document.getElementById('printFormulaBody').innerHTML = formulaHtml;
+            
+            // Cost & AI
+            document.getElementById('printFinalCost').innerText = document.getElementById('finalCost').innerText;
+            document.getElementById('printAiSuggestion').innerText = document.getElementById('aiSuggestion').innerText;
+            
+            // Chart Image
             const radarCanvas = document.getElementById('radarChart');
-            const radarImgData = radarCanvas.toDataURL("image/png");
+            document.getElementById('printRadarImg').src = radarCanvas.toDataURL("image/png");
 
-            // Build Formula Rows
-            let formulaRows = formula.map(item => `
-                <tr>
-                    <td>${item.name}</td>
-                    <td style="text-align:right">${item.pct}%</td>
-                    <td style="text-align:right">${(item.cost*item.pct/100 * rate.rate).toFixed(1)}</td>
-                </tr>`).join('');
-            // Add Water
-            const waterPct = document.getElementById('waterPct').innerText;
-            formulaRows = `<tr><td>WATER</td><td style="text-align:right">${waterPct}%</td><td style="text-align:right">-</td></tr>` + formulaRows;
-
-            // Build Assets HTML
-            const assetsList = productsDB.map(p => `
-                <div class="pdf-product">
-                    <img src="${p.img}" alt="Product" onerror="this.onerror=null;this.src='https://placehold.co/100x100/eee/999?text=IMG'">
-                    <div>
-                        <div style="font-weight:bold; color: #2D4A3E;">${p.name[currentLang]}</div>
-                        <div style="font-size: 10px; color: #666; margin: 4px 0;">${p.desc[currentLang]}</div>
-                        <div style="font-size: 10px; color: #5F8D75;">Key: ${p.key}</div>
-                    </div>
-                </div>
-            `).join('');
-
-            // Build Claims
-            const claimsHtml = activeClaims.length > 0 
-                ? activeClaims.map(c => `<span style="display:inline-block; background:#5F8D75; color:white; padding:2px 8px; border-radius:10px; font-size:10px; margin-right:4px;">${t.claims[c]}</span>`).join('')
-                : `<span style="color:#999; font-size:10px;">--</span>`;
-
-            // PDF HTML Template
-            const htmlContent = `
-                <div class="pdf-page">
-                    <div class="pdf-header">
-                        <img src="logo.png" style="height:40px;" onerror="this.src='https://placehold.co/150x50/2D4A3E/FFFFFF?text=AMS+BioteQ'">
-                        <div style="font-size: 12px; color: #666;">${t.print_page_title1}</div>
-                    </div>
-                    
-                    <div class="pdf-section-title">${t.print_section1}</div>
-                    
-                    <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
-                        <div style="width: 48%; border:1px solid #eee; padding:10px; border-radius:8px;">
-                            <div style="font-weight:bold; font-size:12px; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:5px;">${t.sect_sales}</div>
-                            <div style="font-size:11px; color:#444;">Channel: ${channelText}</div>
-                            <div style="font-size:11px; color:#444;">Retail: ${document.getElementById('retailPrice').value} ${rate.unit}</div>
-                            <div style="font-size:11px; color:#444;">Target Cost: ${targetCost}</div>
-                        </div>
-                        <div style="width: 48%; border:1px solid #eee; padding:10px; border-radius:8px;">
-                            <div style="font-weight:bold; font-size:12px; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:5px;">${t.sect_claims}</div>
-                            <div>${claimsHtml}</div>
-                            <div style="margin-top:10px; font-size:11px; color:#2D4A3E;"><strong>Fabric:</strong> ${fab.name[currentLang]}</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display:flex; justify-content:space-between;">
-                        <div style="width: 55%;">
-                            <div class="pdf-section-title" style="font-size:12px; margin-bottom:5px;">${t.sect_structure}</div>
-                            <table class="pdf-table">
-                                <thead><tr><th>Ingredient</th><th style="text-align:right">%</th><th style="text-align:right">Cost</th></tr></thead>
-                                <tbody>${formulaRows}</tbody>
-                            </table>
-                            <div style="background:#f9f9f9; padding:10px; border-left:4px solid #5F8D75;">
-                                <strong>Actual Cost: ${finalCost} / sheet</strong>
-                            </div>
-                        </div>
-                        <div style="width: 40%; text-align:center;">
-                            <div style="margin-bottom:5px; font-weight:bold; font-size:12px;">Efficacy Radar</div>
-                            <img src="${radarImgData}" style="width:100%;">
-                            <div style="margin-top:15px; text-align:left; background:#E8F3EB; padding:10px; border-radius:4px;">
-                                <div style="font-weight:bold; font-size:10px; color:#2D4A3E;">AI Insight</div>
-                                <div style="font-size:10px; color:#444;">${document.getElementById('aiSuggestion').innerText}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="pdf-footer">
-                        AMS BioteQ | Innovation for Life | Email: contact@amsbioteq.com | Date: ${new Date().toLocaleDateString()}
-                    </div>
-                </div>
-
-                <div class="pdf-page">
-                    <div class="pdf-header">
-                        <img src="logo.png" style="height:40px;" onerror="this.src='https://placehold.co/150x50/2D4A3E/FFFFFF?text=AMS+BioteQ'">
-                        <div style="font-size: 12px; color: #666;">${t.print_page_title2}</div>
-                    </div>
-                    
-                    <div class="pdf-section-title">${t.print_section2}</div>
-                    <div>${assetsList}</div>
-
-                    <div class="pdf-footer">
-                        AMS BioteQ | Innovation for Life | Email: contact@amsbioteq.com | Date: ${new Date().toLocaleDateString()}
-                    </div>
-                </div>
-            `;
-
-            container.innerHTML = htmlContent;
-
-            const opt = {
-                margin:       0,
-                filename:     'AMS_BioteQ_Report.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
-
-            setTimeout(() => {
-                html2pdf().set(opt).from(container).save().then(() => {
-                    container.innerHTML = '';
-                    overlay.style.display = 'none';
-                }).catch(err => {
-                    console.error(err);
-                    alert("PDF Generation Error: " + err.message);
-                    overlay.style.display = 'none';
-                });
-            }, 1000);
+            // Date
+            const dateStr = new Date().toLocaleDateString(currentLang === 'zh-TW' ? 'zh-TW' : currentLang === 'ja-JP' ? 'ja-JP' : 'en-US');
+            document.getElementById('printDate1').innerText = dateStr;
+            document.getElementById('printDate2').innerText = dateStr;
+            
+            // Products Grid
+            document.getElementById('printProductGrid').innerHTML = productsDB.map(p => `
+                <div class="print-product">
+                    <img src="${p.img}" alt="${p.name[currentLang]}" onerror="this.onerror=null;this.src='https://placehold.co/400x300/2D4A3E/FFFFFF?text=Image+Not+Found'">
+                    <h4>${p.name[currentLang]}</h4>
+                    <p>${p.desc[currentLang]}</p>
+                    <div class="key">Key: ${p.key}</div>
+                </div>`).join('');
         }
     </script>
 </body>
